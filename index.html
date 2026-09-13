@@ -60,6 +60,28 @@
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen flex flex-col justify-between">
+    <!-- Firebase Email/Password Authentication -->
+    <div id="auth-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md hidden items-center justify-center z-[100] p-4">
+        <div class="bg-white rounded-3xl w-full max-w-md p-7 shadow-2xl">
+            <div class="text-center mb-6">
+                <div class="mx-auto mb-3 w-14 h-14 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-2xl font-black">S</div>
+                <h2 id="auth-title" class="text-2xl font-black text-slate-900">تسجيل الدخول</h2>
+                <p class="text-sm text-slate-500 mt-2">ادخل من أي جهاز بنفس الحساب لمزامنة المحفظة.</p>
+            </div>
+            <form onsubmit="handleAuthSubmit(event)" class="space-y-3">
+                <input type="hidden" id="auth-signup" value="false">
+                <input id="auth-email" type="email" required placeholder="البريد الإلكتروني" class="w-full border border-slate-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-emerald-500">
+                <input id="auth-password" type="password" required placeholder="كلمة المرور (6 أحرف على الأقل)" minlength="6" class="w-full border border-slate-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-emerald-500">
+                <div id="auth-confirm-wrap" class="hidden">
+                    <input id="auth-confirm" type="password" placeholder="تأكيد كلمة المرور" class="w-full border border-slate-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <p id="auth-message" class="text-xs text-rose-600 min-h-[18px]"></p>
+                <button id="auth-submit" type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl p-3">دخول</button>
+                <button id="auth-toggle" type="button" onclick="toggleAuthMode()" class="w-full text-sm text-blue-600 hover:underline">ليس لديك حساب؟ إنشاء حساب</button>
+            </form>
+        </div>
+    </div>
+
 
     <!-- Header Navigation -->
     <header class="bg-slate-900 text-white shadow-md sticky top-0 z-50">
@@ -76,15 +98,12 @@
 
                 <!-- User Profile & Account ID Badge -->
                 <div class="flex items-center gap-2 bg-slate-800/90 text-slate-300 text-xs px-3 py-1.5 rounded-xl border border-slate-700">
-                    <span class="text-slate-400 font-medium">رمز المحفظة:</span>
+                    <span class="text-slate-400 font-medium">معرّف الحساب:</span>
                     <span id="user-id-display" class="font-mono text-emerald-400 font-bold select-all dir-ltr max-w-[140px] sm:max-w-none truncate">جاري التحميل...</span>
                     <button onclick="copyUserId()" title="نسخ رمز الحساب" class="hover:text-emerald-300 bg-slate-700 hover:bg-slate-600 p-1.5 rounded transition-colors mr-1 flex items-center gap-1 text-[11px]">
                         📋 <span class="hidden sm:inline">نسخ الرمز</span>
                     </button>
-                    <button onclick="copyShareLink()" title="نسخ رابط المحفظة المباشر للمزامنة مع الهاتف" class="hover:text-emerald-300 bg-slate-700 hover:bg-slate-600 p-1.5 rounded transition-colors mr-1 flex items-center gap-1 text-[11px] text-emerald-400 font-bold">
-                        🔗 <span class="hidden sm:inline">رابط المحفظة</span>
-                    </button>
-                    <button onclick="openUserModal()" title="تبديل / فتح محفظة أخرى" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2.5 py-1.5 rounded-md transition-colors mr-1">
+                    <button onclick="openUserModal()" title="إدارة الحساب" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2.5 py-1.5 rounded-md transition-colors mr-1">
                         🔑 فتح حساب
                     </button>
                 </div>
@@ -466,38 +485,26 @@
         </div>
     </div>
 
-    <!-- Modal for User ID Switch & Management -->
+    <!-- Modal for User Account & Cloud Sync -->
     <div id="user-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div class="flex justify-between items-center border-b pb-3">
-                <h3 class="font-bold text-lg text-slate-900">إدارة حساب المحفظة والمزامنة بين الأجهزة</h3>
+                <h3 class="font-bold text-lg text-slate-900">حساب StockPulse والمزامنة</h3>
                 <button onclick="closeUserModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
             </div>
             <div class="space-y-4 text-sm text-slate-600">
-                <p>لكل محفظة استثمارية رمز ورابط خاص. يمكنك استخدام الرابط لفتح وتحديث بياناتك مباشرة على الهاتف واللابتوب معا بنفس الوقت.</p>
-                
+                <p>بيانات المحفظة محفوظة في السحابة. سجّل الدخول بنفس الحساب من الهاتف واللابتوب لتظهر كل التغييرات على الجهازين.</p>
                 <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
-                    <span class="text-xs text-slate-500 font-bold block">رمز حسابك الحالي:</span>
+                    <span class="text-xs text-slate-500 font-bold block">معرّف الحساب:</span>
                     <div class="flex items-center gap-2">
                         <input type="text" id="modal-current-user-id" readonly class="w-full bg-white border border-slate-300 rounded-lg p-2 font-mono text-emerald-600 font-bold text-xs select-all outline-none">
-                        <button onclick="copyUserId()" class="px-2.5 py-2 bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold rounded-lg shrink-0">نسخ الرمز</button>
-                        <button onclick="copyShareLink()" class="px-2.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shrink-0">رابط الفون 📲</button>
+                        <button onclick="copyUserId()" class="px-2.5 py-2 bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold rounded-lg shrink-0">نسخ</button>
                     </div>
-                    <p class="text-[11px] text-emerald-700 font-medium pt-1">
-                        💡 تلميحة: اضغط على "رابط الفون 📲" وأرسله لنفسك على الموبايل لفتح المحفظة ذاتها مباشرة.
-                    </p>
                 </div>
-
-                <hr class="border-slate-200">
-
-                <form onsubmit="handleUserSwitch(event)" class="space-y-3">
-                    <label class="block text-xs font-bold text-slate-700">فتح محفظة سابقة أو التبديل لرقم حساب آخر:</label>
-                    <input type="text" id="input-switch-user-id" required placeholder="أدخل رمز المحفظة الخاص بك هنا..." class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none font-mono">
-                    <div class="flex justify-between items-center pt-2">
-                        <button type="button" onclick="generateNewAccount()" class="text-xs text-blue-600 hover:text-blue-800 font-bold underline">إنشاء حساب محفظة جديد تلقائياً</button>
-                        <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-sm shadow-sm">فتح المحفظة</button>
-                    </div>
-                </form>
+                <div class="flex gap-2">
+                    <button onclick="closeUserModal()" class="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg">إغلاق</button>
+                    <button onclick="logoutStockPulse()" class="flex-1 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg">تسجيل الخروج</button>
+                </div>
             </div>
         </div>
     </div>
@@ -517,17 +524,23 @@
 
     <!-- Dynamic JavaScript Logic & Resilience Layer -->
     <script>
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'stock-dashboard-app';
-        
-        // Robust Firebase Config Parser (handles both string and object inputs safely)
-        let firebaseConfig = null;
-        try {
-            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-                firebaseConfig = typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config;
-            }
-        } catch (e) {
-            console.error("Firebase config parse error:", e);
-        }
+        const appId = 'stockpulse';
+
+        // ============================================================
+        // FIREBASE SETUP
+        // Paste the Web App config from Firebase Console here.
+        // These values are client-side identifiers; Firestore Rules
+        // are what protect each user's portfolio.
+        // ============================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyAdf6m2PvA1MYrXrMH0MSrrpoxI1Aok4BE",
+            authDomain: "stockpulse-17d6c.firebaseapp.com",
+            projectId: "stockpulse-17d6c",
+            storageBucket: "stockpulse-17d6c.firebasestorage.app",
+            messagingSenderId: "131720141562",
+            appId: "1:131720141562:web:33dcac93ad87e80fe68743",
+            measurementId: "G-7HK1ZZQYB1"
+        };
 
         let db = null;
         let auth = null;
@@ -682,38 +695,15 @@
 
         window.handleUserSwitch = function handleUserSwitch(e) {
             e.preventDefault();
-            const newUserId = document.getElementById('input-switch-user-id').value.trim();
-            if (newUserId) {
-                switchUserAccount(newUserId);
-                window.closeUserModal();
-            }
+            showToast('استخدم تسجيل الدخول نفسه لفتح المحفظة على أي جهاز.');
         };
 
         window.generateNewAccount = function generateNewAccount() {
-            const newId = `usr_${Math.random().toString(36).substring(2, 10)}`;
-            switchUserAccount(newId);
-            window.closeUserModal();
+            showToast('أنشئ حسابًا جديدًا من شاشة تسجيل الدخول.');
         };
 
         async function switchUserAccount(newUserId) {
-            userId = newUserId;
-            localStorage.setItem('stock_dashboard_active_user_id', userId);
-            updateUserIdUI();
-            
-            // Clear existing snapshot listeners
-            unsubs.forEach(unsub => unsub && unsub());
-            unsubs = [];
-
-            pendingSyncQueue = [];
-            loadFromLocalStorage();
-
-            if (db && userId) {
-                setupCloudListeners();
-                flushPendingSyncQueue();
-            } else {
-                recalculateMetricsAndCharts();
-            }
-            showToast(`تم الانتقال لرمز المحفظة: ${userId}`);
+            showToast('تم تعطيل تبديل المعرّف اليدوي لحماية بيانات المحفظة. استخدم الحساب نفسه على الأجهزة الأخرى.');
         }
 
         // Automatic Offline Sync Queue Processor
@@ -813,56 +803,110 @@
         }
 
         async function initCloudStorage() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const urlUserId = urlParams.get('id')?.trim();
-            const savedUserId = urlUserId || localStorage.getItem('stock_dashboard_active_user_id');
-
-            if (!firebaseConfig) {
-                userId = savedUserId || `usr_${Math.random().toString(36).substring(2, 9)}`;
-                updateUserIdUI();
-                loadFromLocalStorage();
-                updateSyncBadge("وضع محلي 💾", "amber");
-                return;
-            }
-
             try {
-                const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
-                const { getAuth, signInAnonymously, signInWithCustomToken } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
-                const { getFirestore, enableIndexedDbPersistence } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                const configIsReady = firebaseConfig &&
+                    !firebaseConfig.apiKey.includes('PASTE_') &&
+                    !firebaseConfig.projectId.includes('PASTE_') &&
+                    !firebaseConfig.appId.includes('PASTE_');
+
+                if (!configIsReady) {
+                    showAuthModal('إعداد Firebase لم يكتمل بعد. ضع بيانات Web App في أعلى الملف ثم ارفعه إلى GitHub.');
+                    updateSyncBadge('بانتظار إعداد Firebase ⚙️', 'amber');
+                    return;
+                }
+
+                const { initializeApp } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js');
+                const { getAuth, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js');
+                const { getFirestore, enableIndexedDbPersistence } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
 
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
 
-                // Enable Firestore offline caching
-                try {
-                    await enableIndexedDbPersistence(db);
-                } catch (persErr) {
-                    console.warn("Firestore offline persistence notice:", persErr.code);
-                }
+                try { await enableIndexedDbPersistence(db); }
+                catch (e) { console.warn('Firestore persistence:', e.code || e); }
 
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    const credential = await signInWithCustomToken(auth, __initial_auth_token);
-                    userId = savedUserId || credential.user.uid;
-                } else {
-                    const credential = await signInAnonymously(auth);
-                    userId = savedUserId || credential.user.uid;
-                }
-
-                localStorage.setItem('stock_dashboard_active_user_id', userId);
-                updateUserIdUI();
-                loadFromLocalStorage();
-                await setupCloudListeners();
-                await flushPendingSyncQueue();
-
+                onAuthStateChanged(auth, async (firebaseUser) => {
+                    unsubs.forEach(unsub => unsub && unsub());
+                    unsubs = [];
+                    if (!firebaseUser) {
+                        userId = null;
+                        showAuthModal();
+                        updateSyncBadge('سجل الدخول للمزامنة ☁️', 'amber');
+                        return;
+                    }
+                    userId = firebaseUser.uid;
+                    localStorage.setItem('stock_dashboard_active_user_id', userId);
+                    updateUserIdUI();
+                    hideAuthModal();
+                    loadFromLocalStorage();
+                    await setupCloudListeners();
+                    await flushPendingSyncQueue();
+                    updateSyncBadge('متصل بالسحابة ☁️ (مباشر)', 'emerald');
+                });
             } catch (err) {
-                console.warn("Cloud storage init fallback to local:", err);
-                userId = savedUserId || `usr_${Math.random().toString(36).substring(2, 9)}`;
-                updateUserIdUI();
-                loadFromLocalStorage();
-                updateSyncBadge("وضع أوفلاين 💾", "amber");
+                console.error('Firebase initialization failed:', err);
+                showAuthModal('تعذر تشغيل Firebase. راجع بيانات Firebase في أعلى الملف.');
+                updateSyncBadge('خطأ في الاتصال بالسحابة', 'rose');
             }
         }
+
+        window.showAuthModal = function showAuthModal(message = '') {
+            const modal = document.getElementById('auth-modal');
+            const msg = document.getElementById('auth-message');
+            if (msg) msg.textContent = message;
+            if (modal) { modal.classList.remove('hidden'); modal.classList.add('flex'); }
+        };
+
+        window.hideAuthModal = function hideAuthModal() {
+            const modal = document.getElementById('auth-modal');
+            if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+        };
+
+        window.toggleAuthMode = function toggleAuthMode() {
+            const hidden = document.getElementById('auth-signup');
+            const isSignup = hidden.value === 'true';
+            hidden.value = String(!isSignup);
+            document.getElementById('auth-title').textContent = !isSignup ? 'إنشاء حساب جديد' : 'تسجيل الدخول';
+            document.getElementById('auth-submit').textContent = !isSignup ? 'إنشاء الحساب' : 'دخول';
+            document.getElementById('auth-toggle').textContent = !isSignup ? 'لديك حساب بالفعل؟ تسجيل الدخول' : 'ليس لديك حساب؟ إنشاء حساب';
+            document.getElementById('auth-confirm-wrap').classList.toggle('hidden', isSignup);
+        };
+
+        window.handleAuthSubmit = async function handleAuthSubmit(e) {
+            e.preventDefault();
+            const email = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-password').value;
+            const confirm = document.getElementById('auth-confirm').value;
+            const isSignup = document.getElementById('auth-signup').value === 'true';
+            const msg = document.getElementById('auth-message');
+            if (!email || password.length < 6) { msg.textContent = 'اكتب بريدًا صحيحًا وكلمة مرور 6 أحرف على الأقل.'; return; }
+            if (isSignup && password !== confirm) { msg.textContent = 'كلمتا المرور غير متطابقتين.'; return; }
+            try {
+                const { createUserWithEmailAndPassword, signInWithEmailAndPassword } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js');
+                msg.textContent = 'جاري الاتصال...';
+                if (isSignup) await createUserWithEmailAndPassword(auth, email, password);
+                else await signInWithEmailAndPassword(auth, email, password);
+                msg.textContent = '';
+            } catch (err) {
+                const map = {
+                    'auth/email-already-in-use':'البريد الإلكتروني مستخدم بالفعل.',
+                    'auth/invalid-credential':'البريد أو كلمة المرور غير صحيحة.',
+                    'auth/user-not-found':'الحساب غير موجود. أنشئ حسابًا أولاً.',
+                    'auth/wrong-password':'البريد أو كلمة المرور غير صحيحة.',
+                    'auth/operation-not-allowed':'فعّل تسجيل الدخول بالبريد وكلمة المرور من Firebase Authentication.',
+                    'auth/weak-password':'كلمة المرور ضعيفة. استخدم 6 أحرف على الأقل.',
+                    'auth/invalid-email':'البريد الإلكتروني غير صحيح.'
+                };
+                msg.textContent = map[err.code] || `حدث خطأ: ${err.message}`;
+            }
+        };
+
+        window.logoutStockPulse = async function logoutStockPulse() {
+            if (!auth) return;
+            const { signOut } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js');
+            await signOut(auth);
+        };
 
         function updateSyncBadge(text, color) {
             const badge = document.getElementById('sync-status');
