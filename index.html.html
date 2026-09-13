@@ -78,10 +78,13 @@
                 <div class="flex items-center gap-2 bg-slate-800/90 text-slate-300 text-xs px-3 py-1.5 rounded-xl border border-slate-700">
                     <span class="text-slate-400 font-medium">رمز المحفظة:</span>
                     <span id="user-id-display" class="font-mono text-emerald-400 font-bold select-all dir-ltr max-w-[140px] sm:max-w-none truncate">جاري التحميل...</span>
-                    <button onclick="copyUserId()" title="نسخ رمز الحساب" class="hover:text-emerald-300 bg-slate-700 hover:bg-slate-600 p-1 rounded transition-colors mr-1">
-                        📋
+                    <button onclick="copyUserId()" title="نسخ رمز الحساب" class="hover:text-emerald-300 bg-slate-700 hover:bg-slate-600 p-1.5 rounded transition-colors mr-1 flex items-center gap-1 text-[11px]">
+                        📋 <span class="hidden sm:inline">نسخ الرمز</span>
                     </button>
-                    <button onclick="openUserModal()" title="تبديل / فتح محفظة أخرى" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2.5 py-1 rounded-md transition-colors mr-1">
+                    <button onclick="copyShareLink()" title="نسخ رابط المحفظة المباشر للمزامنة مع الهاتف" class="hover:text-emerald-300 bg-slate-700 hover:bg-slate-600 p-1.5 rounded transition-colors mr-1 flex items-center gap-1 text-[11px] text-emerald-400 font-bold">
+                        🔗 <span class="hidden sm:inline">رابط المحفظة</span>
+                    </button>
+                    <button onclick="openUserModal()" title="تبديل / فتح محفظة أخرى" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2.5 py-1.5 rounded-md transition-colors mr-1">
                         🔑 فتح حساب
                     </button>
                 </div>
@@ -467,18 +470,22 @@
     <div id="user-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div class="flex justify-between items-center border-b pb-3">
-                <h3 class="font-bold text-lg text-slate-900">إدارة حساب المحفظة الخاص بك</h3>
+                <h3 class="font-bold text-lg text-slate-900">إدارة حساب المحفظة والمزامنة بين الأجهزة</h3>
                 <button onclick="closeUserModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
             </div>
             <div class="space-y-4 text-sm text-slate-600">
-                <p>لكل مستخدم رمز محفظة خاص وفريد لضمان عدم تداخل صفقاتك مع صفقات أي شخص آخر.</p>
+                <p>لكل محفظة استثمارية رمز ورابط خاص. يمكنك استخدام الرابط لفتح وتحديث بياناتك مباشرة على الهاتف واللابتوب معا بنفس الوقت.</p>
                 
-                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1">
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
                     <span class="text-xs text-slate-500 font-bold block">رمز حسابك الحالي:</span>
                     <div class="flex items-center gap-2">
                         <input type="text" id="modal-current-user-id" readonly class="w-full bg-white border border-slate-300 rounded-lg p-2 font-mono text-emerald-600 font-bold text-xs select-all outline-none">
-                        <button onclick="copyUserId()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shrink-0">نسخ الرمز</button>
+                        <button onclick="copyUserId()" class="px-2.5 py-2 bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold rounded-lg shrink-0">نسخ الرمز</button>
+                        <button onclick="copyShareLink()" class="px-2.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shrink-0">رابط الفون 📲</button>
                     </div>
+                    <p class="text-[11px] text-emerald-700 font-medium pt-1">
+                        💡 تلميحة: اضغط على "رابط الفون 📲" وأرسله لنفسك على الموبايل لفتح المحفظة ذاتها مباشرة.
+                    </p>
                 </div>
 
                 <hr class="border-slate-200">
@@ -607,6 +614,19 @@
             showToast("تم نسخ رمز المحفظة بنجاح إلى الحافظة!");
         };
 
+        window.copyShareLink = function copyShareLink() {
+            if (!userId) return;
+            const url = `${window.location.origin}${window.location.pathname}?id=${encodeURIComponent(userId)}`;
+            const tempInput = document.createElement('input');
+            tempInput.value = url;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+
+            showToast("تم نسخ رابط المحفظة! افتح هذا الرابط على الهاتف للمزامنة اللحظية 📲");
+        };
+
         function showToast(msg) {
             const toast = document.getElementById('toast');
             const msgEl = document.getElementById('toast-message');
@@ -717,8 +737,10 @@
         }
 
         async function initCloudStorage() {
-            // Restore saved user ID or generate a new default user ID
-            const savedUserId = localStorage.getItem('stock_dashboard_active_user_id');
+            // Restore saved user ID from URL query param (?id=...), local storage, or fallback to new unique ID
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlUserId = urlParams.get('id')?.trim();
+            const savedUserId = urlUserId || localStorage.getItem('stock_dashboard_active_user_id');
 
             if (!firebaseConfig) {
                 userId = savedUserId || `user_${Math.random().toString(36).substring(2, 9)}`;
@@ -745,6 +767,9 @@
                     const credential = await signInAnonymously(auth);
                     userId = savedUserId || credential.user.uid;
                 }
+
+                // Ensure selected user ID is stored
+                localStorage.setItem('stock_dashboard_active_user_id', userId);
 
                 updateUserIdUI();
                 updateSyncBadge("مربوط بالسحابة ☁️", "emerald");
