@@ -401,25 +401,38 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-3 gap-3">
+                <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-bold text-slate-700 mb-1">عدد الأسهم</label>
-                        <input type="number" id="tx-shares" step="1" required class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">سعر التنفيذ</label>
-                        <input type="number" id="tx-price" step="0.01" required class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                        <input type="number" id="tx-shares" step="1" min="1" required class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-700 mb-1">العمولة</label>
-                        <input type="number" id="tx-fee" step="0.01" value="0" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                        <input type="number" id="tx-fee" step="0.01" min="0" value="0" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                    </div>
+                </div>
+
+                <!-- Buy / Sell / Current market prices -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">سعر الشراء</label>
+                        <input type="number" id="tx-buy-price" step="0.01" min="0.0001" required placeholder="سعر الشراء" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                    </div>
+                    <div id="sell-price-wrap" class="hidden">
+                        <label class="block text-xs font-bold text-slate-700 mb-1">سعر البيع</label>
+                        <input type="number" id="tx-sell-price" step="0.01" min="0.0001" placeholder="سعر البيع" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">سعر السوق الحالي (للصفقات المفتوحة)</label>
-                    <input type="number" id="tx-current-price" step="0.01" placeholder="سعر السهم اليوم" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                    <label id="tx-current-price-label" class="block text-xs font-bold text-slate-700 mb-1">سعر السوق الحالي (للصفقات المفتوحة)</label>
+                    <div class="flex gap-2 items-center">
+                        <input type="number" id="tx-current-price" step="0.01" min="0.0001" placeholder="سيتم جلب السعر تلقائياً" readonly class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                        <span id="tx-price-status" class="text-[11px] text-slate-400 whitespace-nowrap">—</span>
+                    </div>
                 </div>
+
+                <p id="tx-pl-preview" class="text-xs font-bold mt-2 min-h-[18px]"></p>
 
                 <div class="flex justify-end gap-2 pt-3 border-t">
                     <button type="button" onclick="closeModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-sm font-medium">إلغاء</button>
@@ -1014,26 +1027,55 @@
             window.applyFilters();
         };
 
+        function getTxPrices(t) {
+            const buyPrice = Number(t.buyPrice ?? (t.type === 'شراء' ? t.price : t.price) ?? 0);
+            const sellPrice = Number(t.sellPrice ?? (t.type === 'بيع' ? t.price : 0) ?? 0);
+            const currentPrice = Number(t.currentPrice ?? buyPrice ?? 0);
+            return { buyPrice, sellPrice, currentPrice };
+        }
+
+        function calculateTransactionPL(t) {
+            const shares = Number(t.shares) || 0;
+            const fee = Number(t.fee) || 0;
+            const { buyPrice, sellPrice, currentPrice } = getTxPrices(t);
+            const buyCost = (shares * buyPrice) + (t.type === 'شراء' ? fee : 0);
+            const sellRevenue = (shares * (t.type === 'بيع' ? sellPrice : currentPrice)) - (t.type === 'بيع' ? fee : 0);
+
+            if (t.type === 'بيع') {
+                const pl = sellRevenue - (shares * buyPrice);
+                const ratio = (shares * buyPrice) > 0 ? (pl / (shares * buyPrice)) * 100 : 0;
+                return { pl, ratio, buyCost: shares * buyPrice, value: sellRevenue };
+            }
+
+            if (t.status === 'مفتوحة') {
+                const currentValue = shares * currentPrice;
+                const pl = currentValue - buyCost;
+                const ratio = buyCost > 0 ? (pl / buyCost) * 100 : 0;
+                return { pl, ratio, buyCost, value: currentValue };
+            }
+
+            // A closed buy is kept compatible with the old data model; if a sale price exists use it.
+            if (t.sellPrice != null && Number(t.sellPrice) > 0) {
+                const pl = (shares * Number(t.sellPrice)) - buyCost - fee;
+                const ratio = buyCost > 0 ? (pl / buyCost) * 100 : 0;
+                return { pl, ratio, buyCost, value: shares * Number(t.sellPrice) };
+            }
+
+            return { pl: 0, ratio: 0, buyCost, value: 0 };
+        }
+
         function recalculateMetricsAndCharts() {
             let totalMarketValue = 0;
             let totalRealizedPL = 0;
             let totalUnrealizedPL = 0;
 
             transactions.forEach(t => {
-                const totalCost = (t.shares * t.price) + (t.fee || 0);
-                const currPrice = t.currentPrice || t.price;
-                
-                if (t.status === 'مفتوحة' && t.type === 'شراء') {
-                    const currentVal = t.shares * currPrice;
-                    totalMarketValue += currentVal;
-                    totalUnrealizedPL += (currentVal - totalCost);
-                } else if (t.status === 'مغلقة') {
-                    if (t.type === 'بيع') {
-                        const totalReturn = (t.shares * t.price) - (t.fee || 0);
-                        totalRealizedPL += (totalReturn - (t.shares * t.price)); 
-                    } else if (t.type === 'شراء') {
-                        totalRealizedPL += ((t.shares * currPrice) - totalCost);
-                    }
+                const result = calculateTransactionPL(t);
+                if (t.type === 'شراء' && t.status === 'مفتوحة') {
+                    totalMarketValue += result.value;
+                    totalUnrealizedPL += result.pl;
+                } else if (t.type === 'بيع' || (t.type === 'شراء' && t.status === 'مغلقة')) {
+                    totalRealizedPL += result.pl;
                 }
             });
 
@@ -1074,20 +1116,10 @@
             }
 
             filteredTransactions.forEach((t, index) => {
-                const totalAmount = t.type === 'شراء' ? (t.shares * t.price) + t.fee : (t.shares * t.price) - t.fee;
-                const currPrice = t.currentPrice || t.price;
-                
-                let pl = 0;
-                let plRatio = 0;
-
-                if (t.status === 'مفتوحة' && t.type === 'شراء') {
-                    const currentVal = t.shares * currPrice;
-                    pl = currentVal - totalAmount;
-                    plRatio = totalAmount > 0 ? (pl / totalAmount) * 100 : 0;
-                } else if (t.status === 'مغلقة') {
-                    pl = t.type === 'بيع' ? (totalAmount - (t.shares * t.price)) : ((t.shares * currPrice) - totalAmount);
-                    plRatio = totalAmount > 0 ? (pl / totalAmount) * 100 : 0;
-                }
+                const { buyPrice, sellPrice, currentPrice } = getTxPrices(t);
+                const result = calculateTransactionPL(t);
+                const shownPrice = t.type === 'بيع' ? sellPrice : buyPrice;
+                const priceLabel = t.type === 'بيع' ? `شراء ${buyPrice.toFixed(2)} / بيع ${sellPrice.toFixed(2)}` : buyPrice.toFixed(2);
 
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50 transition-colors border-b border-slate-100";
@@ -1096,14 +1128,14 @@
                     <td class="p-3 whitespace-nowrap text-xs">${t.date}</td>
                     <td class="p-3 font-extrabold text-slate-800">${t.ticker}</td>
                     <td class="p-3"><span class="px-2 py-0.5 rounded text-xs font-bold ${t.type === 'شراء' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}">${t.type}</span></td>
-                    <td class="p-3 font-semibold">${t.shares.toLocaleString()}</td>
-                    <td class="p-3">${t.price.toFixed(2)}</td>
-                    <td class="p-3 text-slate-400 text-xs">${t.fee.toFixed(2)}</td>
-                    <td class="p-3 font-bold text-slate-800">${totalAmount.toLocaleString('ar-EG', { style: 'currency', currency: 'EGP' })}</td>
-                    <td class="p-3 font-semibold">${currPrice ? currPrice.toFixed(2) : '-'}</td>
+                    <td class="p-3 font-semibold">${Number(t.shares).toLocaleString()}</td>
+                    <td class="p-3" title="${t.type === 'بيع' ? `سعر الشراء: ${buyPrice.toFixed(2)}` : 'سعر الشراء'}">${priceLabel}</td>
+                    <td class="p-3 text-slate-400 text-xs">${Number(t.fee || 0).toFixed(2)}</td>
+                    <td class="p-3 font-bold text-slate-800">${result.value.toLocaleString('ar-EG', { style: 'currency', currency: 'EGP' })}</td>
+                    <td class="p-3 font-semibold">${t.type === 'شراء' && t.status === 'مفتوحة' ? currentPrice.toFixed(2) : '-'}</td>
                     <td class="p-3"><span class="px-2 py-0.5 rounded text-xs font-bold ${t.status === 'مفتوحة' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}">${t.status}</span></td>
-                    <td class="p-3 font-bold ${pl >= 0 ? 'text-emerald-600' : 'text-rose-600'}">${pl.toFixed(2)}</td>
-                    <td class="p-3 font-bold text-xs ${plRatio >= 0 ? 'text-emerald-600' : 'text-rose-600'}">${plRatio.toFixed(1)}%</td>
+                    <td class="p-3 font-bold ${result.pl >= 0 ? 'text-emerald-600' : 'text-rose-600'}">${result.pl.toFixed(2)}</td>
+                    <td class="p-3 font-bold text-xs ${result.ratio >= 0 ? 'text-emerald-600' : 'text-rose-600'}">${result.ratio.toFixed(2)}%</td>
                     <td class="p-3 text-center whitespace-nowrap">
                         <button onclick="openEditModal('${t.id}')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded ml-1 transition-colors">تعديل</button>
                         <button onclick="deleteTx('${t.id}')" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 px-2 py-1 rounded transition-colors">حذف</button>
@@ -1120,7 +1152,7 @@
             const openBuyTxs = filteredTransactions.filter(t => t.status === 'مفتوحة' && t.type === 'شراء');
             const allocationMap = {};
             openBuyTxs.forEach(t => {
-                const val = t.shares * (t.currentPrice || t.price);
+                const val = t.shares * (t.currentPrice || t.buyPrice || t.price);
                 allocationMap[t.ticker] = (allocationMap[t.ticker] || 0) + val;
             });
 
@@ -1146,11 +1178,7 @@
             // Chart 2: Ticker Performance
             const perfMap = {};
             filteredTransactions.forEach(t => {
-                const currPrice = t.currentPrice || t.price;
-                const totalAmount = t.type === 'شراء' ? (t.shares * t.price) + t.fee : (t.shares * t.price) - t.fee;
-                let pl = 0;
-                if (t.status === 'مفتوحة' && t.type === 'شراء') pl = (t.shares * currPrice) - totalAmount;
-                else if (t.status === 'مغلقة') pl = t.type === 'بيع' ? (totalAmount - (t.shares * t.price)) : ((t.shares * currPrice) - totalAmount);
+                const pl = calculateTransactionPL(t).pl;
                 perfMap[t.ticker] = (perfMap[t.ticker] || 0) + pl;
             });
 
@@ -1181,12 +1209,7 @@
             const growthData = [];
 
             sortedTxs.forEach(t => {
-                const currPrice = t.currentPrice || t.price;
-                const totalAmount = t.type === 'شراء' ? (t.shares * t.price) + t.fee : (t.shares * t.price) - t.fee;
-                let pl = 0;
-                if (t.status === 'مفتوحة' && t.type === 'شراء') pl = (t.shares * currPrice) - totalAmount;
-                else if (t.status === 'مغلقة') pl = t.type === 'بيع' ? (totalAmount - (t.shares * t.price)) : ((t.shares * currPrice) - totalAmount);
-                
+                const pl = calculateTransactionPL(t).pl;
                 cumPL += pl;
                 growthLabels.push(t.date);
                 growthData.push(cumPL);
@@ -1213,11 +1236,124 @@
             }
         }
 
+        // Fetch the latest market price automatically (Yahoo Finance public chart endpoint).
+        // EGX tickers are normally suffixed with .CA, e.g. ORAS -> ORAS.CA.
+        let marketPriceTimer = null;
+        let marketPriceRequestId = 0;
+
+        function normalizeMarketSymbol(ticker) {
+            const raw = String(ticker || '').trim().toUpperCase();
+            if (!raw) return '';
+            if (raw.includes('.')) return raw;
+            return raw + '.CA';
+        }
+
+        async function fetchCurrentMarketPrice(ticker) {
+            const symbol = normalizeMarketSymbol(ticker);
+            if (!symbol) return null;
+            const requestId = ++marketPriceRequestId;
+            const status = document.getElementById('tx-price-status');
+            const input = document.getElementById('tx-current-price');
+            if (status) status.textContent = 'جاري الجلب…';
+            try {
+                const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1m&includePrePost=false`;
+                const response = await fetch(url, { cache: 'no-store' });
+                if (!response.ok) throw new Error('market request failed');
+                const data = await response.json();
+                const result = data?.chart?.result?.[0];
+                const meta = result?.meta;
+                const price = Number(meta?.regularMarketPrice ?? meta?.currentPrice);
+                if (!Number.isFinite(price) || price <= 0) throw new Error('price unavailable');
+                if (requestId !== marketPriceRequestId) return price;
+                if (input) input.value = price.toFixed(2);
+                if (status) status.textContent = 'مباشر ✓';
+
+                // While editing an existing/open transaction, keep its current price in sync locally.
+                const id = document.getElementById('tx-id')?.value;
+                if (id) {
+                    const tx = transactions.find(t => String(t.id) === String(id));
+                    if (tx && tx.status === 'مفتوحة' && tx.type === 'شراء') {
+                        tx.currentPrice = price;
+                        saveToLocalStorage();
+                        recalculateMetricsAndCharts();
+                    }
+                }
+                return price;
+            } catch (err) {
+                if (requestId !== marketPriceRequestId) return null;
+                if (status) status.textContent = 'تعذر الجلب';
+                return null;
+            }
+        }
+
+        function startMarketPriceAutoRefresh() {
+            if (marketPriceTimer) clearInterval(marketPriceTimer);
+            const ticker = document.getElementById('tx-ticker')?.value;
+            if (!ticker) return;
+            fetchCurrentMarketPrice(ticker);
+            marketPriceTimer = setInterval(() => {
+                const currentTicker = document.getElementById('tx-ticker')?.value;
+                if (currentTicker) fetchCurrentMarketPrice(currentTicker);
+            }, 60000);
+        }
+
+        function stopMarketPriceAutoRefresh() {
+            if (marketPriceTimer) clearInterval(marketPriceTimer);
+            marketPriceTimer = null;
+        }
+
+        function updateBuyProfitPreview() {
+            const buy = Number(document.getElementById('tx-buy-price')?.value);
+            const current = Number(document.getElementById('tx-current-price')?.value);
+            const shares = Number(document.getElementById('tx-shares')?.value) || 0;
+            const fee = Number(document.getElementById('tx-fee')?.value) || 0;
+            const preview = document.getElementById('tx-pl-preview');
+            if (!preview || !Number.isFinite(buy) || buy <= 0 || !Number.isFinite(current) || current <= 0) return;
+            const cost = shares * buy + fee;
+            const pl = shares * current - cost;
+            const ratio = cost > 0 ? (pl / cost) * 100 : 0;
+            preview.textContent = `متوقع الآن: ${pl.toLocaleString('ar-EG', {minimumFractionDigits:2, maximumFractionDigits:2})} ج.م (${ratio.toFixed(2)}%)`;
+            preview.className = `text-xs font-bold mt-2 ${pl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`;
+        }
+
+                function updateTransactionPriceFields() {
+            const type = document.getElementById('tx-type')?.value || 'شراء';
+            const sellWrap = document.getElementById('sell-price-wrap');
+            const sellInput = document.getElementById('tx-sell-price');
+            const currentInput = document.getElementById('tx-current-price');
+            const currentLabel = document.getElementById('tx-current-price-label');
+            if (type === 'بيع') {
+                sellWrap?.classList.remove('hidden');
+                if (sellInput) sellInput.required = true;
+                if (currentInput) currentInput.value = '';
+                if (currentInput) currentInput.disabled = true;
+                if (currentLabel) currentLabel.textContent = 'سعر السوق الحالي (غير مطلوب للبيع)';
+                document.getElementById('tx-status').value = 'مغلقة';
+            } else {
+                sellWrap?.classList.add('hidden');
+                if (sellInput) { sellInput.required = false; sellInput.value = ''; }
+                if (currentInput) currentInput.disabled = false;
+                if (currentLabel) currentLabel.textContent = 'سعر السوق الحالي (للصفقات المفتوحة)';
+                startMarketPriceAutoRefresh();
+            }
+            updateBuyProfitPreview();
+        }
+
+        document.getElementById('tx-type')?.addEventListener('change', updateTransactionPriceFields);
+        document.getElementById('tx-ticker')?.addEventListener('blur', () => {
+            if ((document.getElementById('tx-type')?.value || 'شراء') === 'شراء') startMarketPriceAutoRefresh();
+        });
+        ['tx-buy-price', 'tx-shares', 'tx-fee'].forEach(id => {
+            document.getElementById(id)?.addEventListener('input', updateBuyProfitPreview);
+        });
+        document.getElementById('tx-current-price')?.addEventListener('input', updateBuyProfitPreview);
+
         window.openAddModal = function openAddModal() {
             document.getElementById('modal-title').innerText = "إضافة صفقة جديدة";
             document.getElementById('tx-id').value = "";
             document.getElementById('tx-form').reset();
             document.getElementById('tx-date').value = new Date().toISOString().split('T')[0];
+            updateTransactionPriceFields();
             document.getElementById('transaction-modal').classList.remove('hidden');
             document.getElementById('transaction-modal').classList.add('flex');
         };
@@ -1233,15 +1369,18 @@
             document.getElementById('tx-type').value = tx.type;
             document.getElementById('tx-status').value = tx.status;
             document.getElementById('tx-shares').value = tx.shares;
-            document.getElementById('tx-price').value = tx.price;
-            document.getElementById('tx-fee').value = tx.fee;
+            document.getElementById('tx-buy-price').value = tx.buyPrice ?? (tx.type === 'شراء' ? tx.price : tx.price);
+            document.getElementById('tx-sell-price').value = tx.sellPrice ?? (tx.type === 'بيع' ? tx.price : "");
+            document.getElementById('tx-fee').value = tx.fee ?? 0;
             document.getElementById('tx-current-price').value = tx.currentPrice || "";
+            updateTransactionPriceFields();
 
             document.getElementById('transaction-modal').classList.remove('hidden');
             document.getElementById('transaction-modal').classList.add('flex');
         };
 
         window.closeModal = function closeModal() {
+            stopMarketPriceAutoRefresh();
             document.getElementById('transaction-modal').classList.add('hidden');
             document.getElementById('transaction-modal').classList.remove('flex');
         };
@@ -1249,17 +1388,36 @@
         window.handleFormSubmit = async function handleFormSubmit(e) {
             e.preventDefault();
             const id = document.getElementById('tx-id').value || `tx_${Date.now()}`;
+            const type = document.getElementById('tx-type').value;
+            const buyPrice = parseFloat(document.getElementById('tx-buy-price').value);
+            const sellPriceValue = parseFloat(document.getElementById('tx-sell-price').value);
             const newTx = {
                 id: id,
                 date: document.getElementById('tx-date').value,
                 ticker: document.getElementById('tx-ticker').value.toUpperCase().trim(),
-                type: document.getElementById('tx-type').value,
+                type: type,
                 status: document.getElementById('tx-status').value,
                 shares: parseFloat(document.getElementById('tx-shares').value),
-                price: parseFloat(document.getElementById('tx-price').value),
+                // Keep price for backward compatibility; the real source of truth is buyPrice/sellPrice.
+                price: type === 'بيع' ? sellPriceValue : buyPrice,
+                buyPrice: buyPrice,
+                sellPrice: type === 'بيع' ? sellPriceValue : null,
                 fee: parseFloat(document.getElementById('tx-fee').value) || 0,
                 currentPrice: parseFloat(document.getElementById('tx-current-price').value) || null
             };
+
+            if (!Number.isFinite(buyPrice) || buyPrice <= 0) {
+                showToast('اكتب سعر الشراء بشكل صحيح.');
+                return;
+            }
+            if (type === 'بيع' && (!Number.isFinite(sellPriceValue) || sellPriceValue <= 0)) {
+                showToast('اكتب سعر البيع بشكل صحيح.');
+                return;
+            }
+            if (type === 'شراء' && document.getElementById('tx-status').value === 'مفتوحة' && (!Number.isFinite(newTx.currentPrice) || newTx.currentPrice <= 0)) {
+                showToast('تعذر جلب سعر السوق. اكتب رمز السهم بشكل صحيح وتأكد من وجود الإنترنت.');
+                return;
+            }
 
             const idx = transactions.findIndex(t => String(t.id) === String(id));
             if (idx !== -1) transactions[idx] = newTx;
