@@ -609,13 +609,41 @@
             }
         }
 
+        function resetPortfolioState() {
+            // Never carry another authenticated user's in-memory portfolio into a new account.
+            depositedCapital = 0;
+            availableCash = 0;
+            transactions = [];
+            filteredTransactions = [];
+            pendingSyncQueue = [];
+            deleteTargetId = null;
+            populateFilterOptions();
+            applyFilters();
+            recalculateMetricsAndCharts();
+        }
+
         function loadFromLocalStorage() {
             try {
                 const storageKey = `stock_dashboard_${userId || 'default'}`;
                 const localSettings = localStorage.getItem(`${storageKey}_settings`);
                 const localTxs = localStorage.getItem(`${storageKey}_transactions`);
                 const localQueue = localStorage.getItem(`${storageKey}_pendingQueue`);
-                
+
+                // A user's local state is valid only when at least one user-scoped key exists.
+                // If this is a brand-new account, explicitly reset memory instead of inheriting
+                // the previous account's values from the same browser tab.
+                const hasUserScopedState = localSettings !== null || localTxs !== null || localQueue !== null;
+                if (!hasUserScopedState) {
+                    resetPortfolioState();
+                    return false;
+                }
+
+                depositedCapital = 0;
+                availableCash = 0;
+                transactions = [];
+                filteredTransactions = [];
+                pendingSyncQueue = [];
+
                 if (localSettings) {
                     const parsed = JSON.parse(localSettings);
                     depositedCapital = parsed.depositedCapital ?? 0;
@@ -625,13 +653,16 @@
                     pendingSyncQueue = JSON.parse(localQueue) || [];
                 }
                 if (localTxs !== null) {
-                    transactions = JSON.parse(localTxs);
-                    populateFilterOptions();
-                    applyFilters();
-                    return true;
+                    transactions = JSON.parse(localTxs) || [];
                 }
+
+                populateFilterOptions();
+                applyFilters();
+                recalculateMetricsAndCharts();
+                return true;
             } catch (e) {
                 console.error("Local storage load error:", e);
+                resetPortfolioState();
             }
             return false;
         }
@@ -898,20 +929,34 @@
                 catch (e) { console.warn('Firestore persistence:', e.code || e); }
 
                 onAuthStateChanged(auth, async (firebaseUser) => {
+                    // Stop listeners before changing the active account.
                     unsubs.forEach(unsub => unsub && unsub());
                     unsubs = [];
+
                     if (!firebaseUser) {
                         userId = null;
+                        resetPortfolioState();
+                        updateUserIdUI();
                         showAuthModal();
                         updateSyncBadge('سجل الدخول للمزامنة ☁️', 'amber');
                         return;
                     }
+
+                    // IMPORTANT: switch the data namespace first, then load ONLY this UID's data.
+                    // This prevents account B from inheriting account A's in-memory portfolio.
                     userId = firebaseUser.uid;
                     localStorage.setItem('stock_dashboard_active_user_id', userId);
                     updateUserIdUI();
                     hideAuthModal();
-                    loadFromLocalStorage();
-                    await bootstrapLocalDataToCloud();
+
+                    const hasLocalState = loadFromLocalStorage();
+
+                    // Only migrate local data that actually belongs to this UID. Never use
+                    // whatever happens to be left in memory from a previously signed-in user.
+                    if (hasLocalState) {
+                        await bootstrapLocalDataToCloud();
+                    }
+
                     await setupCloudListeners();
                     await flushPendingSyncQueue();
                     updateSyncBadge('متصل بالسحابة ☁️ (مباشر)', 'emerald');
