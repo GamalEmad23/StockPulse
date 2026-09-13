@@ -1060,8 +1060,9 @@
                 const currentValue = shares * currentPrice;
                 const pl = currentValue - grossBuyCost - fee;
                 // ROI is net profit/loss relative to the original invested amount.
-                const ratio = grossBuyCost > 0 ? (pl / grossBuyCost) * 100 : null;
-                return { pl, ratio, buyCost: grossBuyCost + fee, value: currentValue, marketValue: currentValue, hasCurrentPrice: true };
+                const totalInvested = grossBuyCost + fee;
+                const ratio = totalInvested > 0 ? (pl / totalInvested) * 100 : null;
+                return { pl, ratio, buyCost: totalInvested, value: currentValue, marketValue: currentValue, hasCurrentPrice: true };
             }
 
             // Backward compatibility for old closed-buy records that contain sellPrice.
@@ -1249,54 +1250,273 @@
             }
         }
 
-        // Fetch the latest market price automatically (Yahoo Finance public chart endpoint).
-        // EGX tickers are normally suffixed with .CA, e.g. ORAS -> ORAS.CA.
+        // Market price for EGX stocks.
+        // The previous implementation depended only on Yahoo Finance, which does not reliably
+        // expose EGX symbols such as AIFI.CA in its public chart endpoint.
+        // We now try TradingView's Egypt scanner first, then Yahoo as a fallback.
         let marketPriceTimer = null;
         let marketPriceRequestId = 0;
 
-        function normalizeMarketSymbol(ticker) {
+        function normalizeEgyptTicker(ticker) {
+            const raw = String(ticker || '').trim().toUpperCase();
+            if (!raw) return '';
+            return raw.replace(/\.CA$/i, '');
+        }
+
+        function normalizeYahooSymbol(ticker) {
             const raw = String(ticker || '').trim().toUpperCase();
             if (!raw) return '';
             if (raw.includes('.')) return raw;
             return raw + '.CA';
         }
 
+        // Fast EGX market-price loader.
+        // IMPORTANT: this page is hosted on GitHub Pages, so there is no backend
+        // request proxy. We therefore use a short timeout, parallel sources, and
+        // a tiny local cache so the UI never sits waiting for a dead endpoint.
+        const MARKET_PRICE_CACHE_TTL = 30 * 60 * 1000;
+        const MARKET_PRICE_TIMEOUT = 1600;
+
+        function withTimeout(promise, ms = MARKET_PRICE_TIMEOUT) {
+            return Promise.race([
+                promise,
+                new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+            ]);
+        }
+
+        function getCachedMarketPrice(ticker) {
+            try {
+                const key = `stockpulse_market_${normalizeEgyptTicker(ticker)}`;
+                const item = JSON.parse(localStorage.getItem(key) || 'null');
+                if (item && Number(item.price) > 0 && (Date.now() - Number(item.time || 0)) < MARKET_PRICE_CACHE_TTL) {
+                    return Number(item.price);
+                }
+            } catch (_) {}
+            return null;
+        }
+
+        function setCachedMarketPrice(ticker, price) {
+            try {
+                const key = `stockpulse_market_${normalizeEgyptTicker(ticker)}`;
+                localStorage.setItem(key, JSON.stringify({ price: Number(price), time: Date.now() }));
+            } catch (_) {}
+        }
+
+        function parseTradingViewResponse(data) {
+            const value = Number(data?.data?.[0]?.d?.[0]);
+            return Number.isFinite(value) && value > 0 ? value : null;
+        }
+
+        function parseYahooResponse(data) {
+            const meta = data?.chart?.result?.[0]?.meta;
+            const price = Number(meta?.regularMarketPrice ?? meta?.currentPrice ?? meta?.previousClose);
+            return Number.isFinite(price) && price > 0 ? price : null;
+        }
+
+        async function fetchTradingViewEgyptDirect(ticker) {
+            const symbol = normalizeEgyptTicker(ticker);
+            const response = await withTimeout(fetch('https://scanner.tradingview.com/egypt/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                cache: 'no-store',
+                body: JSON.stringify({
+                    symbols: { tickers: [`EGX:${symbol}`], query: { types: [] } },
+                    columns: ['close']
+                })
+            }));
+            if (!response.ok) throw new Error('TradingView HTTP ' + response.status);
+            const price = parseTradingViewResponse(await response.json());
+            if (!price) throw new Error('TradingView no price');
+            return price;
+        }
+
+        async function fetchYahooDirect(ticker) {
+            const symbol = normalizeYahooSymbol(ticker);
+            // Daily interval is enough for regularMarketPrice and is much lighter
+            // than requesting a 1-minute chart from Yahoo.
+            const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1d&includePrePost=false`;
+            const response = await withTimeout(fetch(url, { cache: 'no-store' }));
+            if (!response.ok) throw new Error('Yahoo HTTP ' + response.status);
+            const price = parseYahooResponse(await response.json());
+            if (!price) throw new Error('Yahoo no price');
+            return price;
+        }
+
+        async function fetchTradingViewViaProxy(ticker) {
+            const symbol = normalizeEgyptTicker(ticker);
+            const endpoint = 'https://scanner.tradingview.com/egypt/scan';
+            const payload = JSON.stringify({
+                symbols: { tickers: [`EGX:${symbol}`], query: { types: [] } },
+                columns: ['close']
+            });
+            // Public proxies are only a last resort. Keep them short so one dead
+            // proxy can never make the modal hang for many seconds.
+            const proxyTargets = [
+                `https://corsproxy.io/?url=${encodeURIComponent(endpoint)}&method=POST&headers=${encodeURIComponent('Content-Type: application/json')}&data=${encodeURIComponent(payload)}`,
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(endpoint)}`
+            ];
+            for (const url of proxyTargets) {
+                try {
+                    const response = await withTimeout(fetch(url, { cache: 'no-store' }));
+                    if (!response.ok) continue;
+                    const price = parseTradingViewResponse(await response.json());
+                    if (price) return price;
+                } catch (_) {}
+            }
+            throw new Error('TradingView proxy unavailable');
+        }
+
+        async function fetchYahooViaProxy(ticker) {
+            const symbol = normalizeYahooSymbol(ticker);
+            const target = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1d&includePrePost=false`;
+            const urls = [
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}`,
+                `https://corsproxy.io/?url=${encodeURIComponent(target)}`
+            ];
+            for (const url of urls) {
+                try {
+                    const response = await withTimeout(fetch(url, { cache: 'no-store' }));
+                    if (!response.ok) continue;
+                    let data = await response.json();
+                    if (typeof data?.contents === 'string') data = JSON.parse(data.contents);
+                    const price = parseYahooResponse(data);
+                    if (price) return price;
+                } catch (_) {}
+            }
+            throw new Error('Yahoo proxy unavailable');
+        }
+
+
+        // Reliable EGX fallback for GitHub Pages: fetch the public EGXpilot quote
+        // endpoint first, then Mubasher through Jina's CORS-friendly reader.
+        // Both are GET requests, unlike TradingView's scanner POST, so they work
+        // much better from a static GitHub Pages site.
+        function parseGenericMarketPrice(data) {
+            const candidates = [
+                data?.price, data?.last, data?.lastPrice, data?.currentPrice,
+                data?.regularMarketPrice, data?.close, data?.previousClose,
+                data?.data?.price, data?.data?.last, data?.data?.lastPrice,
+                data?.data?.currentPrice, data?.data?.close,
+                data?.quote?.price, data?.quote?.lastPrice, data?.quote?.close,
+                data?.result?.price, data?.result?.lastPrice, data?.result?.close
+            ];
+            for (const value of candidates) {
+                const n = Number(value);
+                if (Number.isFinite(n) && n > 0) return n;
+            }
+            return null;
+        }
+
+        async function fetchEGXpilotDirect(ticker) {
+            const symbol = normalizeEgyptTicker(ticker);
+            const urls = [
+                `https://egxpilot.com/api/stocks/${encodeURIComponent(symbol)}`,
+                `https://egxpilot.com/api/v2/st/${encodeURIComponent(symbol)}`
+            ];
+            for (const url of urls) {
+                try {
+                    const response = await withTimeout(fetch(url, { cache: 'no-store', headers: { 'Accept': 'application/json' } }), 1800);
+                    if (!response.ok) continue;
+                    const data = await response.json();
+                    const price = parseGenericMarketPrice(data);
+                    if (price) return price;
+                } catch (_) {}
+            }
+            throw new Error('EGXpilot unavailable');
+        }
+
+        async function fetchMubasherViaJina(ticker) {
+            const symbol = normalizeEgyptTicker(ticker);
+            const target = `https://english.mubasher.info/markets/EGX/stocks/${encodeURIComponent(symbol)}`;
+            const url = `https://r.jina.ai/${target}`;
+            const response = await withTimeout(fetch(url, { cache: 'no-store', headers: { 'Accept': 'text/plain' } }), 2500);
+            if (!response.ok) throw new Error('Mubasher HTTP ' + response.status);
+            const text = await response.text();
+
+            // Mubasher places the latest price immediately after the "Last update"
+            // line. This also handles the Arabic page if the English page changes.
+            const section = text.split(/Last update:|آخر تحديث:/i)[1] || text;
+            const numbers = [...section.matchAll(/(?:^|\n)\s*(\d+(?:\.\d+)?)\s*(?:\n|$)/g)]
+                .map(m => Number(m[1]))
+                .filter(n => Number.isFinite(n) && n > 0);
+            if (numbers.length) return numbers[0];
+
+            // Fallback: look for common labeled price fields.
+            const m = text.match(/(?:last price|current price|السعر الحالي|سعر السهم)\s*[:|]?\s*([0-9]+(?:\.[0-9]+)?)/i);
+            const price = Number(m?.[1]);
+            if (Number.isFinite(price) && price > 0) return price;
+            throw new Error('Mubasher price not found');
+        }
+
         async function fetchCurrentMarketPrice(ticker) {
-            const symbol = normalizeMarketSymbol(ticker);
-            if (!symbol) return null;
+            const cleanTicker = normalizeEgyptTicker(ticker);
+            if (!cleanTicker) return null;
+
             const requestId = ++marketPriceRequestId;
             const status = document.getElementById('tx-price-status');
             const input = document.getElementById('tx-current-price');
-            if (status) status.textContent = 'جاري الجلب…';
-            try {
-                const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1m&includePrePost=false`;
-                const response = await fetch(url, { cache: 'no-store' });
-                if (!response.ok) throw new Error('market request failed');
-                const data = await response.json();
-                const result = data?.chart?.result?.[0];
-                const meta = result?.meta;
-                const price = Number(meta?.regularMarketPrice ?? meta?.currentPrice);
-                if (!Number.isFinite(price) || price <= 0) throw new Error('price unavailable');
-                if (requestId !== marketPriceRequestId) return price;
-                if (input) input.value = price.toFixed(2);
-                if (status) status.textContent = 'مباشر ✓';
 
-                // While editing an existing/open transaction, keep its current price in sync locally.
-                const id = document.getElementById('tx-id')?.value;
-                if (id) {
-                    const tx = transactions.find(t => String(t.id) === String(id));
-                    if (tx && tx.status === 'مفتوحة' && tx.type === 'شراء') {
+            // Show cached price immediately. The network refresh happens in the
+            // background, so opening/editing a transaction never feels blocked.
+            const cached = getCachedMarketPrice(cleanTicker);
+            if (cached > 0 && input) {
+                input.value = Number(cached).toFixed(4);
+                if (status) status.textContent = 'السعر المحفوظ ✓ — جاري التحديث…';
+                updateBuyProfitPreview();
+            } else if (status) {
+                status.textContent = 'جاري جلب السعر…';
+            }
+
+            // First race the GET-based sources that work well from GitHub Pages.
+            // TradingView/Yahoo remain as additional fallbacks.
+            const directRequests = [
+                fetchEGXpilotDirect(cleanTicker).then(price => ({ price, provider: 'EGXpilot' })),
+                fetchMubasherViaJina(cleanTicker).then(price => ({ price, provider: 'Mubasher' })),
+                fetchTradingViewEgyptDirect(cleanTicker).then(price => ({ price, provider: 'TradingView' })),
+                fetchYahooDirect(cleanTicker).then(price => ({ price, provider: 'Yahoo' }))
+            ];
+
+            let result = null;
+            try {
+                result = await Promise.any(directRequests);
+            } catch (_) {
+                // Last resort only: public CORS proxies. They are deliberately not
+                // part of the first race because they are the slowest/least stable.
+                try {
+                    result = await Promise.any([
+                        fetchTradingViewViaProxy(cleanTicker).then(price => ({ price, provider: 'TradingView proxy' })),
+                        fetchYahooViaProxy(cleanTicker).then(price => ({ price, provider: 'Yahoo proxy' }))
+                    ]);
+                } catch (_) {}
+            }
+
+            if (requestId !== marketPriceRequestId) return result?.price ?? cached ?? null;
+            const price = Number(result?.price);
+            if (!(Number.isFinite(price) && price > 0)) {
+                if (status) status.textContent = cached > 0 ? 'استخدمنا آخر سعر محفوظ' : 'تعذر الجلب — حاول مرة أخرى';
+                return cached > 0 ? cached : null;
+            }
+
+            setCachedMarketPrice(cleanTicker, price);
+            if (input) input.value = price.toFixed(4);
+            if (status) status.textContent = `تم الجلب ✓ (${result.provider})`;
+
+            let changed = false;
+            transactions.forEach(tx => {
+                if (normalizeEgyptTicker(tx.ticker) === cleanTicker && tx.type === 'شراء' && tx.status === 'مفتوحة') {
+                    if (Number(tx.currentPrice) !== price) {
                         tx.currentPrice = price;
-                        saveToLocalStorage();
-                        recalculateMetricsAndCharts();
+                        changed = true;
                     }
                 }
-                return price;
-            } catch (err) {
-                if (requestId !== marketPriceRequestId) return null;
-                if (status) status.textContent = 'تعذر الجلب';
-                return null;
+            });
+            if (changed) {
+                saveToLocalStorage();
+                recalculateMetricsAndCharts();
             }
+
+            updateBuyProfitPreview();
+            return price;
         }
 
         function startMarketPriceAutoRefresh() {
@@ -1334,10 +1554,10 @@
             let ratio = null;
             if (type === 'بيع' && sell > 0) {
                 pl = (shares * sell) - fee - (shares * buy);
-                ratio = ((pl / (shares * buy)) * 100);
+                ratio = (((pl) / ((shares * buy) + fee)) * 100);
             } else if (type === 'شراء' && current > 0) {
                 pl = (shares * current) - (shares * buy) - fee;
-                ratio = ((pl / (shares * buy)) * 100);
+                ratio = (((pl) / ((shares * buy) + fee)) * 100);
             }
 
             if (pl == null || !Number.isFinite(pl)) {
@@ -1373,6 +1593,16 @@
         }
 
         document.getElementById('tx-type')?.addEventListener('change', updateTransactionPriceFields);
+        let tickerPriceDebounce = null;
+        document.getElementById('tx-ticker')?.addEventListener('input', () => {
+            const input = document.getElementById('tx-ticker');
+            if (input) input.value = input.value.toUpperCase().replace(/\s+/g, '');
+            if ((document.getElementById('tx-type')?.value || 'شراء') !== 'شراء') return;
+            clearTimeout(tickerPriceDebounce);
+            const ticker = input?.value?.trim();
+            if (!ticker) return;
+            tickerPriceDebounce = setTimeout(() => fetchCurrentMarketPrice(ticker), 250);
+        });
         document.getElementById('tx-ticker')?.addEventListener('blur', () => {
             if ((document.getElementById('tx-type')?.value || 'شراء') === 'شراء') startMarketPriceAutoRefresh();
         });
@@ -1389,6 +1619,7 @@
             updateTransactionPriceFields();
             document.getElementById('transaction-modal').classList.remove('hidden');
             document.getElementById('transaction-modal').classList.add('flex');
+            document.getElementById('tx-ticker')?.focus();
         };
 
         window.openEditModal = function openEditModal(id) {
@@ -1447,10 +1678,8 @@
                 showToast('اكتب سعر البيع بشكل صحيح.');
                 return;
             }
-            if (type === 'شراء' && document.getElementById('tx-status').value === 'مفتوحة' && (!Number.isFinite(newTx.currentPrice) || newTx.currentPrice <= 0)) {
-                showToast('تعذر جلب سعر السوق. اكتب رمز السهم بشكل صحيح وتأكد من وجود الإنترنت.');
-                return;
-            }
+            // A live market price is helpful for open BUY positions, but it must not
+            // prevent saving the transaction. It will be refreshed automatically later.
 
             const idx = transactions.findIndex(t => String(t.id) === String(id));
             if (idx !== -1) transactions[idx] = newTx;
