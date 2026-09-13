@@ -555,6 +555,7 @@
     measurementId: "G-7HK1ZZQYB1"
 };
 
+        // FIRESTORE PATH: users/{uid}/... — every cloud document is strictly scoped to the authenticated Firebase UID.
         let db = null;
         let auth = null;
         let userId = null;
@@ -597,20 +598,32 @@
             }
         };
 
-        function saveToLocalStorage() {
+        // ============================================================
+        // STRICT USER-SCOPED PORTFOLIO STATE
+        // Every local key, queue item, listener and Firestore path is
+        // bound to the currently authenticated Firebase UID.
+        // ============================================================
+        function getUserStorageKey(uid = userId) {
+            return uid ? `stock_dashboard_uid_${uid}` : null;
+        }
+
+        function saveToLocalStorage(uidForSave = userId) {
             try {
-                const storageKey = `stock_dashboard_${userId || 'default'}`;
+                if (!uidForSave) return;
+                // Never allow a stale account's state to be written under the new account.
+                if (auth?.currentUser?.uid && auth.currentUser.uid !== uidForSave) return;
+                const storageKey = getUserStorageKey(uidForSave);
                 localStorage.setItem(`${storageKey}_transactions`, JSON.stringify(transactions));
                 localStorage.setItem(`${storageKey}_settings`, JSON.stringify({ depositedCapital, availableCash }));
-                localStorage.setItem(`${storageKey}_pendingQueue`, JSON.stringify(pendingSyncQueue));
-                if (userId) localStorage.setItem('stock_dashboard_active_user_id', userId);
+                const safeQueue = pendingSyncQueue.filter(item => !item.uid || item.uid === uidForSave);
+                localStorage.setItem(`${storageKey}_pendingQueue`, JSON.stringify(safeQueue));
+                localStorage.setItem('stock_dashboard_active_user_id', uidForSave);
             } catch (e) {
-                console.error("Local storage save error:", e);
+                console.error('Local storage save error:', e);
             }
         }
 
         function resetPortfolioState() {
-            // Never carry another authenticated user's in-memory portfolio into a new account.
             depositedCapital = 0;
             availableCash = 0;
             transactions = [];
@@ -622,18 +635,16 @@
             recalculateMetricsAndCharts();
         }
 
-        function loadFromLocalStorage() {
+        function loadFromLocalStorage(uidForLoad = userId) {
             try {
-                const storageKey = `stock_dashboard_${userId || 'default'}`;
+                if (!uidForLoad) { resetPortfolioState(); return false; }
+                const storageKey = getUserStorageKey(uidForLoad);
                 const localSettings = localStorage.getItem(`${storageKey}_settings`);
                 const localTxs = localStorage.getItem(`${storageKey}_transactions`);
                 const localQueue = localStorage.getItem(`${storageKey}_pendingQueue`);
 
-                // A user's local state is valid only when at least one user-scoped key exists.
-                // If this is a brand-new account, explicitly reset memory instead of inheriting
-                // the previous account's values from the same browser tab.
-                const hasUserScopedState = localSettings !== null || localTxs !== null || localQueue !== null;
-                if (!hasUserScopedState) {
+                // IMPORTANT: a new UID gets a completely clean state.
+                if (localSettings === null && localTxs === null && localQueue === null) {
                     resetPortfolioState();
                     return false;
                 }
@@ -646,14 +657,15 @@
 
                 if (localSettings) {
                     const parsed = JSON.parse(localSettings);
-                    depositedCapital = parsed.depositedCapital ?? 0;
-                    availableCash = parsed.availableCash ?? 0;
+                    depositedCapital = Number(parsed.depositedCapital) || 0;
+                    availableCash = Number(parsed.availableCash) || 0;
                 }
+                if (localTxs) transactions = JSON.parse(localTxs) || [];
                 if (localQueue) {
-                    pendingSyncQueue = JSON.parse(localQueue) || [];
-                }
-                if (localTxs !== null) {
-                    transactions = JSON.parse(localTxs) || [];
+                    const parsedQueue = JSON.parse(localQueue) || [];
+                    pendingSyncQueue = parsedQueue
+                        .filter(item => !item.uid || item.uid === uidForLoad)
+                        .map(item => ({ ...item, uid: uidForLoad }));
                 }
 
                 populateFilterOptions();
@@ -661,10 +673,10 @@
                 recalculateMetricsAndCharts();
                 return true;
             } catch (e) {
-                console.error("Local storage load error:", e);
+                console.error('Local storage load error:', e);
                 resetPortfolioState();
+                return false;
             }
-            return false;
         }
 
         function updateUserIdUI() {
@@ -753,155 +765,128 @@
 
         // Automatic Offline Sync Queue Processor
         // Upload queued changes immediately whenever the user is online.
-        async function flushPendingSyncQueue() {
-            if (!db || !auth || !userId || !navigator.onLine || pendingSyncQueue.length === 0 || syncInFlight) return;
-
+        async function flushPendingSyncQueue(uidForSync = userId) {
+            if (!db || !auth || !uidForSync || !navigator.onLine || syncInFlight) return;
             const currentUser = auth.currentUser;
-            if (!currentUser || currentUser.uid !== userId) return;
+            if (!currentUser || currentUser.uid !== uidForSync) return;
+
+            const queueForUser = pendingSyncQueue.filter(item => !item.uid || item.uid === uidForSync);
+            if (queueForUser.length === 0) return;
 
             syncInFlight = true;
-            updateSyncBadge(`🔄 جاري رفع ${pendingSyncQueue.length} تغيير...`, "blue");
-
+            updateSyncBadge(`🔄 جاري رفع ${queueForUser.length} تغيير...`, 'blue');
             try {
-                const { doc, setDoc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-                const queueCopy = [...pendingSyncQueue];
+                const { doc, setDoc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
                 const failedItems = [];
-
-                for (const item of queueCopy) {
+                for (const item of queueForUser) {
+                    // Re-check auth before EVERY write. This prevents account A's queue from
+                    // ever being written into account B after a fast logout/login.
+                    if (!auth.currentUser || auth.currentUser.uid !== uidForSync || userId !== uidForSync) {
+                        failedItems.push(item);
+                        continue;
+                    }
                     try {
                         if (item.action === 'SET_TRANSACTION') {
-                            const docRef = doc(db, 'artifacts', appId, 'users', userId, 'transactions', String(item.id));
-                            await setDoc(docRef, item.data, { merge: true });
+                            const ref = doc(db, 'users', uidForSync, 'transactions', String(item.id));
+                            await setDoc(ref, item.data, { merge: true });
                         } else if (item.action === 'DELETE_TRANSACTION') {
-                            const docRef = doc(db, 'artifacts', appId, 'users', userId, 'transactions', String(item.id));
-                            await deleteDoc(docRef);
+                            const ref = doc(db, 'users', uidForSync, 'transactions', String(item.id));
+                            await deleteDoc(ref);
                         } else if (item.action === 'SET_SETTINGS') {
-                            const settingsDocRef = doc(db, 'artifacts', appId, 'users', userId, 'settings', 'portfolio');
-                            await setDoc(settingsDocRef, item.data, { merge: true });
+                            const ref = doc(db, 'users', uidForSync, 'settings', 'portfolio');
+                            await setDoc(ref, item.data, { merge: true });
                         }
                     } catch (err) {
-                        console.error("Cloud sync failed; keeping item queued:", item, err);
+                        console.error('Cloud sync failed; keeping item queued:', err);
                         failedItems.push(item);
                     }
                 }
-
-                pendingSyncQueue = failedItems;
-                saveToLocalStorage();
-
-                if (pendingSyncQueue.length === 0) {
-                    updateSyncBadge("متصل بالسحابة ☁️ (مباشر)", "emerald");
-                } else {
-                    updateSyncBadge(`💾 متبقي (${pendingSyncQueue.length}) تغييرات للرفع`, "amber");
+                if (userId === uidForSync) {
+                    pendingSyncQueue = failedItems;
+                    saveToLocalStorage(uidForSync);
+                    updateSyncBadge(failedItems.length === 0 ? 'متصل بالسحابة ☁️ (مباشر)' : `💾 متبقي (${failedItems.length}) تغييرات للرفع`, failedItems.length === 0 ? 'emerald' : 'amber');
                 }
-            } catch (e) {
-                console.error("Error during cloud sync:", e);
-                updateSyncBadge(`💾 متبقي (${pendingSyncQueue.length}) تغييرات للرفع`, "amber");
             } finally {
                 syncInFlight = false;
             }
         }
 
-        // Put one change in the local queue, then upload it immediately if internet is available.
         function queueCloudChange(change) {
-            // Coalesce repeated writes to the same document so the newest value wins.
-            if (change.action === 'SET_TRANSACTION') {
-                pendingSyncQueue = pendingSyncQueue.filter(item =>
-                    !(item.action === 'SET_TRANSACTION' && String(item.id) === String(change.id))
-                );
-            } else if (change.action === 'SET_SETTINGS') {
-                pendingSyncQueue = pendingSyncQueue.filter(item => item.action !== 'SET_SETTINGS');
-            } else if (change.action === 'DELETE_TRANSACTION') {
-                pendingSyncQueue = pendingSyncQueue.filter(item =>
-                    !(item.action === 'SET_TRANSACTION' && String(item.id) === String(change.id))
-                );
+            if (!userId || !auth?.currentUser || auth.currentUser.uid !== userId) return;
+            const scopedChange = { ...change, uid: userId };
+            if (scopedChange.action === 'SET_TRANSACTION') {
+                pendingSyncQueue = pendingSyncQueue.filter(item => !(item.uid === userId && item.action === 'SET_TRANSACTION' && String(item.id) === String(scopedChange.id)));
+            } else if (scopedChange.action === 'SET_SETTINGS') {
+                pendingSyncQueue = pendingSyncQueue.filter(item => !(item.uid === userId && item.action === 'SET_SETTINGS'));
+            } else if (scopedChange.action === 'DELETE_TRANSACTION') {
+                pendingSyncQueue = pendingSyncQueue.filter(item => !(item.uid === userId && String(item.id) === String(scopedChange.id) && (item.action === 'SET_TRANSACTION' || item.action === 'DELETE_TRANSACTION')));
             }
-
-            pendingSyncQueue.push(change);
-            saveToLocalStorage();
-            updateSyncBadge(navigator.onLine ? "🔄 جاري حفظ التغيير على السحابة..." : "💾 محفوظ أوفلاين وسيتم رفعه تلقائياً", navigator.onLine ? "blue" : "amber");
-
-            // Do not wait for the UI; start the upload immediately.
-            void flushPendingSyncQueue();
+            pendingSyncQueue.push(scopedChange);
+            saveToLocalStorage(userId);
+            updateSyncBadge(navigator.onLine ? '🔄 جاري حفظ التغيير على السحابة...' : '💾 محفوظ أوفلاين وسيتم رفعه تلقائياً', navigator.onLine ? 'blue' : 'amber');
+            void flushPendingSyncQueue(userId);
         }
 
-        // If local data exists from before cloud sync was enabled, upload it once only
-        // when the corresponding cloud collection/document is actually empty.
-        async function bootstrapLocalDataToCloud_DISABLED() {
-            if (!db || !userId || !navigator.onLine) return;
-
+        // Legacy local data is NEVER copied into a different UID.
+        // Only data already stored under this exact UID can be restored locally.
+        async function bootstrapLocalDataToCloud(uidForBootstrap = userId) {
+            // Do NOT copy local state into a new Firebase account. The cloud account
+            // is the source of truth when online. A brand-new UID starts empty.
+            if (!db || !uidForBootstrap || !navigator.onLine || !auth?.currentUser || auth.currentUser.uid !== uidForBootstrap) return;
             try {
-                const { doc, getDoc, setDoc, collection, getDocs } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-                const settingsRef = doc(db, 'artifacts', appId, 'users', userId, 'settings', 'portfolio');
+                const { doc, getDoc, setDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                const settingsRef = doc(db, 'users', uidForBootstrap, 'settings', 'portfolio');
                 const settingsSnap = await getDoc(settingsRef);
-
-                if (!settingsSnap.exists()) {
-                    await setDoc(settingsRef, { depositedCapital, availableCash, seeded: true }, { merge: true });
-                }
-
-                const txRef = collection(db, 'artifacts', appId, 'users', userId, 'transactions');
-                const cloudTxs = await getDocs(txRef);
-
-                if (cloudTxs.empty && transactions.length > 0) {
-                    for (const tx of transactions) {
-                        const ref = doc(db, 'artifacts', appId, 'users', userId, 'transactions', String(tx.id));
-                        await setDoc(ref, tx, { merge: true });
-                    }
+                if (!settingsSnap.exists() && auth.currentUser?.uid === uidForBootstrap) {
+                    await setDoc(settingsRef, { depositedCapital: 0, availableCash: 0, seeded: true }, { merge: true });
+                    depositedCapital = 0;
+                    availableCash = 0;
+                    transactions = [];
+                    pendingSyncQueue = [];
+                    saveToLocalStorage(uidForBootstrap);
                 }
             } catch (err) {
-                console.warn('Initial local-to-cloud sync will retry automatically:', err);
+                console.warn('Initial cloud setup will retry automatically:', err);
             }
         }
 
-        async function setupCloudListeners() {
-            // Firestore paths are strictly scoped by the authenticated Firebase UID.
-            if (!db || !userId || !auth?.currentUser || auth.currentUser.uid !== userId) return;
+        async function setupCloudListeners(uidForListener = userId) {
+            if (!db || !uidForListener || !auth?.currentUser || auth.currentUser.uid !== uidForListener) return;
             try {
-                const { doc, setDoc, onSnapshot, collection } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-                
-                // 1. Settings Snapshot
-                const settingsDocRef = doc(db, 'artifacts', appId, 'users', userId, 'settings', 'portfolio');
+                const { doc, setDoc, onSnapshot, collection } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                const settingsDocRef = doc(db, 'users', uidForListener, 'settings', 'portfolio');
                 const unsubSettings = onSnapshot(settingsDocRef, (docSnap) => {
+                    if (userId !== uidForListener || auth?.currentUser?.uid !== uidForListener) return;
                     if (docSnap.exists()) {
                         const data = docSnap.data();
-                        depositedCapital = data.depositedCapital ?? 0;
-                        availableCash = data.availableCash ?? 0;
+                        depositedCapital = Number(data.depositedCapital) || 0;
+                        availableCash = Number(data.availableCash) || 0;
                     } else {
                         setDoc(settingsDocRef, { depositedCapital, availableCash, seeded: true }, { merge: true });
                     }
-                    saveToLocalStorage();
+                    saveToLocalStorage(uidForListener);
                     recalculateMetricsAndCharts();
-                }, (err) => console.error("Error loading settings:", err));
+                }, (err) => console.error('Error loading settings:', err));
                 unsubs.push(unsubSettings);
 
-                // 2. Transactions Snapshot
-                const txCollectionRef = collection(db, 'artifacts', appId, 'users', userId, 'transactions');
+                const txCollectionRef = collection(db, 'users', uidForListener, 'transactions');
                 const unsubTxs = onSnapshot(txCollectionRef, (snapshot) => {
-                    // Only update from cloud if local pending queue is empty to avoid overwriting pending edits
-                    if (pendingSyncQueue.length === 0) {
-                        transactions = snapshot.docs.map(d => ({
-                            id: d.id,
-                            ...d.data()
-                        }));
-                        saveToLocalStorage();
+                    if (userId !== uidForListener || auth?.currentUser?.uid !== uidForListener) return;
+                    if (pendingSyncQueue.filter(item => item.uid === uidForListener).length === 0) {
+                        transactions = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                        saveToLocalStorage(uidForListener);
                         populateFilterOptions();
                         applyFilters();
+                        recalculateMetricsAndCharts();
                     }
-                    
-                    if (navigator.onLine) {
-                        if (pendingSyncQueue.length > 0) {
-                            updateSyncBadge(`💾 أوفلاين/متبقي (${pendingSyncQueue.length}) للرفع`, "amber");
-                        } else {
-                            updateSyncBadge("متصل بالسحابة ☁️ (مباشر)", "emerald");
-                        }
-                    }
+                    if (navigator.onLine) updateSyncBadge('متصل بالسحابة ☁️ (مباشر)', 'emerald');
                 }, (err) => {
-                    console.error("Error loading transactions:", err);
-                    updateSyncBadge(`💾 أوفلاين محلي (${pendingSyncQueue.length} للرفع)`, "amber");
+                    console.error('Error loading transactions:', err);
+                    updateSyncBadge(`💾 أوفلاين محلي (${pendingSyncQueue.length} للرفع)`, 'amber');
                 });
                 unsubs.push(unsubTxs);
-
             } catch (e) {
-                console.error("Error setting up cloud listeners:", e);
+                console.error('Error setting up cloud listeners:', e);
             }
         }
 
@@ -929,14 +914,16 @@
                 try { await enableIndexedDbPersistence(db); }
                 catch (e) { console.warn('Firestore persistence:', e.code || e); }
 
+                let authSessionVersion = 0;
                 onAuthStateChanged(auth, async (firebaseUser) => {
-                    // HARD ACCOUNT ISOLATION:
-                    // 1) Stop every listener belonging to the previous account.
-                    // 2) Clear all in-memory portfolio data.
-                    // 3) Set the Firebase UID as the ONLY source of truth for the data namespace.
-                    unsubs.forEach(unsub => unsub && unsub());
+                    const sessionVersion = ++authSessionVersion;
+                    unsubs.forEach(unsub => { try { unsub && unsub(); } catch (_) {} });
                     unsubs = [];
+                    syncInFlight = false;
+
+                    // Clear ALL in-memory portfolio data before accepting a new account.
                     resetPortfolioState();
+                    pendingSyncQueue = [];
 
                     if (!firebaseUser) {
                         userId = null;
@@ -947,23 +934,25 @@
                         return;
                     }
 
-                    // NEVER use a previous account's UID, email, local data, or in-memory data.
-                    // Firebase Authentication UID uniquely identifies the current account.
-                    const authenticatedUid = firebaseUser.uid;
-                    userId = authenticatedUid;
-                    localStorage.setItem('stock_dashboard_active_user_id', authenticatedUid);
+                    const newUid = firebaseUser.uid;
+                    userId = newUid;
+                    localStorage.setItem('stock_dashboard_active_user_id', newUid);
                     updateUserIdUI();
                     hideAuthModal();
 
-                    // Load only local cache explicitly namespaced to THIS Firebase UID.
-                    // If it does not exist, loadFromLocalStorage() keeps the portfolio empty.
-                    loadFromLocalStorage();
+                    // Start from a clean in-memory state for every UID. The cloud listener
+                    // will load this account's data. Local cache is used only as an offline fallback.
+                    resetPortfolioState();
+                    if (!navigator.onLine) loadFromLocalStorage(newUid);
+                    if (sessionVersion !== authSessionVersion || auth.currentUser?.uid !== newUid || userId !== newUid) return;
 
-                    // IMPORTANT: do NOT automatically copy local/in-memory data into a new
-                    // Firebase account. This was the source of the cross-account wallet leak.
-                    // Firestore is the source of truth; the listener below loads only this UID.
-                    await setupCloudListeners();
-                    await flushPendingSyncQueue();
+                    await bootstrapLocalDataToCloud(newUid);
+                    if (sessionVersion !== authSessionVersion || auth.currentUser?.uid !== newUid || userId !== newUid) return;
+
+                    await setupCloudListeners(newUid);
+                    if (sessionVersion !== authSessionVersion || auth.currentUser?.uid !== newUid || userId !== newUid) return;
+
+                    await flushPendingSyncQueue(newUid);
                     updateSyncBadge('متصل بالسحابة ☁️ (مباشر)', 'emerald');
                 });
             } catch (err) {
