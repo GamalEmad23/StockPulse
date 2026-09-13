@@ -518,7 +518,16 @@
     <!-- Dynamic JavaScript Logic & Resilience Layer -->
     <script>
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'stock-dashboard-app';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        
+        // Robust Firebase Config Parser (handles both string and object inputs safely)
+        let firebaseConfig = null;
+        try {
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                firebaseConfig = typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config;
+            }
+        } catch (e) {
+            console.error("Firebase config parse error:", e);
+        }
 
         let db = null;
         let auth = null;
@@ -530,7 +539,6 @@
         let performanceChartInstance = null;
         let growthChartInstance = null;
 
-        // Start with zero balance and empty portfolio for new users
         let depositedCapital = 0;
         let availableCash = 0;
         let deleteTargetId = null;
@@ -600,6 +608,16 @@
             const modalEl = document.getElementById('modal-current-user-id');
             if (displayEl) displayEl.innerText = userId || 'غير معروف';
             if (modalEl) modalEl.value = userId || '';
+
+            // Update Browser URL seamlessly without refreshing (safely handled for blob / sandboxed iframe environments)
+            try {
+                if (userId && window.history && window.history.replaceState && !window.location.href.startsWith('blob:')) {
+                    const newUrl = `${window.location.pathname}?id=${encodeURIComponent(userId)}`;
+                    window.history.replaceState({ path: newUrl }, '', newUrl);
+                }
+            } catch (err) {
+                console.warn("History replaceState skipped due to sandbox/blob restrictions:", err);
+            }
         }
 
         window.copyUserId = function copyUserId() {
@@ -616,7 +634,11 @@
 
         window.copyShareLink = function copyShareLink() {
             if (!userId) return;
-            const url = `${window.location.origin}${window.location.pathname}?id=${encodeURIComponent(userId)}`;
+            let baseUrl = window.location.origin + window.location.pathname;
+            if (baseUrl.startsWith('blob:')) {
+                baseUrl = baseUrl.replace(/^blob:/, '');
+            }
+            const url = `${baseUrl}?id=${encodeURIComponent(userId)}`;
             const tempInput = document.createElement('input');
             tempInput.value = url;
             document.body.appendChild(tempInput);
@@ -662,7 +684,7 @@
         };
 
         window.generateNewAccount = function generateNewAccount() {
-            const newId = `usr_${Math.random().toString(36).substring(2, 10)}${Date.now().toString(36)}`;
+            const newId = `usr_${Math.random().toString(36).substring(2, 10)}`;
             switchUserAccount(newId);
             window.closeUserModal();
         };
@@ -672,14 +694,11 @@
             localStorage.setItem('stock_dashboard_active_user_id', userId);
             updateUserIdUI();
             
-            // Clear existing listeners
+            // Clear existing snapshot listeners
             unsubs.forEach(unsub => unsub && unsub());
             unsubs = [];
 
-            const hasLocalData = loadFromLocalStorage();
-            if (!hasLocalData && !firebaseConfig) {
-                loadDefaultDemoData();
-            }
+            loadFromLocalStorage();
 
             if (db && userId) {
                 setupCloudListeners();
@@ -694,41 +713,36 @@
             try {
                 const { doc, setDoc, onSnapshot, collection } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
                 
-                let isSeeded = false;
+                // 1. Settings Snapshot
                 const settingsDocRef = doc(db, 'artifacts', appId, 'users', userId, 'settings', 'portfolio');
-                
                 const unsubSettings = onSnapshot(settingsDocRef, (docSnap) => {
                     if (docSnap.exists()) {
                         const data = docSnap.data();
                         depositedCapital = data.depositedCapital ?? 0;
                         availableCash = data.availableCash ?? 0;
-                        isSeeded = !!data.seeded;
                     } else {
-                        setDoc(settingsDocRef, { depositedCapital, availableCash, seeded: true });
+                        setDoc(settingsDocRef, { depositedCapital, availableCash, seeded: true }, { merge: true });
                     }
                     saveToLocalStorage();
                     recalculateMetricsAndCharts();
                 }, (err) => console.error("Error loading settings:", err));
                 unsubs.push(unsubSettings);
 
+                // 2. Transactions Snapshot (Live Sync across all connected devices)
                 const txCollectionRef = collection(db, 'artifacts', appId, 'users', userId, 'transactions');
-                const unsubTxs = onSnapshot(txCollectionRef, async (snapshot) => {
-                    const hasLocalData = loadFromLocalStorage();
-                    if (snapshot.empty && !isSeeded && !hasLocalData) {
-                        await seedInitialTransactions(txCollectionRef, settingsDocRef);
-                    } else if (!snapshot.empty) {
-                        transactions = snapshot.docs.map(d => ({
-                            id: d.id,
-                            ...d.data()
-                        }));
-                        saveToLocalStorage();
-                        populateFilterOptions();
-                        applyFilters();
-                    } else if (snapshot.empty && hasLocalData) {
-                        populateFilterOptions();
-                        applyFilters();
-                    }
-                }, (err) => console.error("Error loading transactions:", err));
+                const unsubTxs = onSnapshot(txCollectionRef, (snapshot) => {
+                    transactions = snapshot.docs.map(d => ({
+                        id: d.id,
+                        ...d.data()
+                    }));
+                    saveToLocalStorage();
+                    populateFilterOptions();
+                    applyFilters();
+                    updateSyncBadge("متصل بالسحابة ☁️ (مباشر)", "emerald");
+                }, (err) => {
+                    console.error("Error loading transactions:", err);
+                    updateSyncBadge("وضع محلي 💾", "amber");
+                });
                 unsubs.push(unsubTxs);
 
             } catch (e) {
@@ -737,16 +751,14 @@
         }
 
         async function initCloudStorage() {
-            // Restore saved user ID from URL query param (?id=...), local storage, or fallback to new unique ID
             const urlParams = new URLSearchParams(window.location.search);
             const urlUserId = urlParams.get('id')?.trim();
             const savedUserId = urlUserId || localStorage.getItem('stock_dashboard_active_user_id');
 
             if (!firebaseConfig) {
-                userId = savedUserId || `user_${Math.random().toString(36).substring(2, 9)}`;
+                userId = savedUserId || `usr_${Math.random().toString(36).substring(2, 9)}`;
                 updateUserIdUI();
-                const hasLocalData = loadFromLocalStorage();
-                if (!hasLocalData) loadDefaultDemoData();
+                loadFromLocalStorage();
                 updateSyncBadge("وضع محلي 💾", "blue");
                 return;
             }
@@ -768,20 +780,15 @@
                     userId = savedUserId || credential.user.uid;
                 }
 
-                // Ensure selected user ID is stored
                 localStorage.setItem('stock_dashboard_active_user_id', userId);
-
                 updateUserIdUI();
-                updateSyncBadge("مربوط بالسحابة ☁️", "emerald");
-
                 await setupCloudListeners();
 
             } catch (err) {
-                console.warn("Cloud storage init error, falling back to local storage:", err);
-                userId = savedUserId || `user_${Math.random().toString(36).substring(2, 9)}`;
+                console.warn("Cloud storage init fallback to local:", err);
+                userId = savedUserId || `usr_${Math.random().toString(36).substring(2, 9)}`;
                 updateUserIdUI();
-                const hasLocalData = loadFromLocalStorage();
-                if (!hasLocalData) loadDefaultDemoData();
+                loadFromLocalStorage();
                 updateSyncBadge("وضع المحفوظات 💾", "amber");
             }
         }
@@ -789,6 +796,7 @@
         function updateSyncBadge(text, color) {
             const badge = document.getElementById('sync-status');
             if (badge) {
+                badge.className = `text-xs px-2 py-0.5 rounded-full bg-${color}-900/60 text-${color}-400 border border-${color}-700/50 flex items-center gap-1.5`;
                 badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-${color}-400 animate-pulse"></span><span>${text}</span>`;
             }
         }
