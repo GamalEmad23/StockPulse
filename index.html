@@ -1077,88 +1077,87 @@
 
         function calculateTransactionPL(t) {
             const shares = Number(t.shares) || 0;
-            const fee = Number(t.fee) || 0;
+            const fee = Math.max(0, Number(t.fee) || 0);
             const { buyPrice, sellPrice, currentPrice } = getTxPrices(t);
             const grossBuyCost = shares * buyPrice;
+            const investedCost = grossBuyCost + fee;
 
-            // SELL: compare the actual selling price with the original buying price.
-            // Commission is deducted from the proceeds.
+            // SELL: the recorded buy price is the cost basis and the sell price is
+            // the actual exit price. The fee belongs to the transaction and is
+            // deducted from the proceeds.
             if (t.type === 'بيع') {
+                if (!(buyPrice > 0) || !(sellPrice > 0) || !(shares > 0)) {
+                    return { pl: null, ratio: null, buyCost: investedCost, value: null, marketValue: null, hasCurrentPrice: false };
+                }
                 const sellRevenue = (shares * sellPrice) - fee;
                 const pl = sellRevenue - grossBuyCost;
-                const ratio = grossBuyCost > 0 ? (pl / grossBuyCost) * 100 : null;
-                return { pl, ratio, buyCost: grossBuyCost, value: sellRevenue, marketValue: null, hasCurrentPrice: true };
+                const ratio = investedCost > 0 ? (pl / investedCost) * 100 : null;
+                return { pl, ratio, buyCost: investedCost, value: sellRevenue, marketValue: null, hasCurrentPrice: true };
             }
 
-            // OPEN BUY: compare the live market value with the amount invested.
-            // Do not calculate a fake 0% result when the live price is unavailable.
+            // OPEN BUY: value the position ONLY at the fetched market price.
+            // Never fall back to the purchase price, because that would manufacture
+            // a false 0.00% P/L.
             if (t.status === 'مفتوحة') {
-                if (!(currentPrice > 0)) {
-                    return { pl: null, ratio: null, buyCost: grossBuyCost + fee, value: null, marketValue: null, hasCurrentPrice: false };
+                if (!(currentPrice > 0) || !(shares > 0) || !(buyPrice > 0)) {
+                    return { pl: null, ratio: null, buyCost: investedCost, value: null, marketValue: null, hasCurrentPrice: false };
                 }
                 const currentValue = shares * currentPrice;
-                const pl = currentValue - grossBuyCost - fee;
-                // ROI is net profit/loss relative to the original invested amount.
-                const totalInvested = grossBuyCost + fee;
-                const ratio = totalInvested > 0 ? (pl / totalInvested) * 100 : null;
-                return { pl, ratio, buyCost: totalInvested, value: currentValue, marketValue: currentValue, hasCurrentPrice: true };
+                const pl = currentValue - investedCost;
+                const ratio = investedCost > 0 ? (pl / investedCost) * 100 : null;
+                return { pl, ratio, buyCost: investedCost, value: currentValue, marketValue: currentValue, hasCurrentPrice: true };
             }
 
-            // Backward compatibility for old closed-buy records that contain sellPrice.
-            if (sellPrice > 0) {
+            // Backward compatibility for old closed BUY records that contain sellPrice.
+            if (sellPrice > 0 && buyPrice > 0) {
                 const sellRevenue = (shares * sellPrice) - fee;
                 const pl = sellRevenue - grossBuyCost;
-                const ratio = grossBuyCost > 0 ? (pl / grossBuyCost) * 100 : null;
-                return { pl, ratio, buyCost: grossBuyCost + fee, value: sellRevenue, marketValue: null, hasCurrentPrice: true };
+                const ratio = investedCost > 0 ? (pl / investedCost) * 100 : null;
+                return { pl, ratio, buyCost: investedCost, value: sellRevenue, marketValue: null, hasCurrentPrice: true };
             }
 
-            return { pl: null, ratio: null, buyCost: grossBuyCost + fee, value: null, marketValue: null, hasCurrentPrice: false };
+            return { pl: null, ratio: null, buyCost: investedCost, value: null, marketValue: null, hasCurrentPrice: false };
         }
 
         function recalculateMetricsAndCharts() {
             let totalMarketValue = 0;
             let totalRealizedPL = 0;
             let totalUnrealizedPL = 0;
-            let totalCostBasis = 0;
+            let totalInvestedOpen = 0;
+            let totalRealizedCost = 0;
 
             transactions.forEach(t => {
                 const result = calculateTransactionPL(t);
                 const shares = Number(t.shares) || 0;
-                const fee = Number(t.fee) || 0;
+                const fee = Math.max(0, Number(t.fee) || 0);
                 const buyPrice = Number(t.buyPrice ?? t.price ?? 0);
                 const costBasis = (shares * buyPrice) + fee;
 
-                // For an open BUY, the invested amount is its cost basis and the
-                // current market value is based ONLY on the live market price.
                 if (t.type === 'شراء' && t.status === 'مفتوحة') {
-                    totalCostBasis += costBasis;
+                    totalInvestedOpen += costBasis;
                     if (result.hasCurrentPrice) {
-                        totalMarketValue += result.value || 0;
+                        totalMarketValue += result.marketValue || 0;
                         totalUnrealizedPL += result.pl || 0;
                     }
-                }
-                // For a SELL, result.pl is the realized return versus its recorded
-                // buy price. Include the original cost basis once in the ROI denominator.
-                else if (t.type === 'بيع') {
-                    totalCostBasis += costBasis;
+                } else if (t.type === 'بيع') {
+                    totalRealizedCost += costBasis;
                     totalRealizedPL += result.pl || 0;
-                }
-                // Backward-compatible closed BUY records with a recorded sellPrice.
-                else if (t.type === 'شراء' && t.status === 'مغلقة' && Number(t.sellPrice) > 0) {
-                    totalCostBasis += costBasis;
+                } else if (t.type === 'شراء' && t.status === 'مغلقة' && Number(t.sellPrice) > 0) {
+                    totalRealizedCost += costBasis;
                     totalRealizedPL += result.pl || 0;
                 }
             });
 
-            const overallPortfolioValue = totalMarketValue + availableCash;
+            // The portfolio's current value is always: market value of open positions
+            // + cash. Deposited capital is NOT added a second time.
+            const overallPortfolioValue = totalMarketValue + Math.max(0, Number(availableCash) || 0);
 
-            // Portfolio ROI must measure investment performance, not the amount of
-            // cash sitting in the account. Therefore use total realized + unrealized
-            // P/L divided by the cost basis of the positions represented by the
-            // transaction ledger. If there are no transaction costs to use, fall back
-            // to deposited capital for compatibility with an older portfolio.
+            // ROI = total investment P/L relative to the capital the user actually
+            // deposited. If no deposited capital was entered, fall back to the
+            // amount currently represented by the ledger.
             const totalPL = totalRealizedPL + totalUnrealizedPL;
-            const roiDenominator = totalCostBasis > 0 ? totalCostBasis : depositedCapital;
+            const fallbackInvestedCapital = totalInvestedOpen + totalRealizedCost;
+            const roiDenominator = Number(depositedCapital) > 0 ? Number(depositedCapital) : fallbackInvestedCapital;
             const roi = roiDenominator > 0 ? (totalPL / roiDenominator) * 100 : 0;
 
             const formatCurrency = (val) => val.toLocaleString('ar-EG', { style: 'currency', currency: 'EGP' });
@@ -1613,7 +1612,7 @@
             // Decypha is the primary EGX quote source here because its KRDI page
             // exposes a clearly labelled latest-update price (for example 0.462 EGP).
             // Investing/other historical pages can lag or show the prior session.
-            const priority = ['Decypha', 'TradingView', 'EGXpilot', 'Mubasher', 'Investing', 'Yahoo'];
+            const priority = ['TradingView', 'Mubasher', 'EGXpilot', 'Decypha', 'Investing', 'Yahoo'];
             let result = successful.sort((a, b) => priority.indexOf(a.provider) - priority.indexOf(b.provider))[0] || null;
 
             if (!result) {
@@ -1636,7 +1635,7 @@
 
             setCachedMarketPrice(cleanTicker, price);
             if (input) input.value = price.toFixed(4);
-            if (status) status.textContent = `تم الجلب ✓ (${result.provider})`;
+            if (status) status.textContent = `تم التحديث ✓ (${result.provider})`;
 
             let changed = false;
             transactions.forEach(tx => {
@@ -1775,6 +1774,7 @@
             document.getElementById('tx-fee').value = tx.fee ?? 0;
             document.getElementById('tx-current-price').value = tx.currentPrice || "";
             updateTransactionPriceFields();
+            if (tx.type === 'شراء' && tx.status === 'مفتوحة') fetchCurrentMarketPrice(tx.ticker);
 
             document.getElementById('transaction-modal').classList.remove('hidden');
             document.getElementById('transaction-modal').classList.add('flex');
@@ -1871,13 +1871,13 @@
             } else {
                 tickers.forEach(t => {
                     const sampleTx = transactions.find(tx => tx.ticker === t);
-                    const currPrice = sampleTx ? sampleTx.currentPrice || sampleTx.price : 0;
+                    const currPrice = sampleTx ? Number(sampleTx.currentPrice) || 0 : 0;
                     
                     const div = document.createElement('div');
                     div.className = "flex items-center justify-between gap-3 bg-slate-50 p-2 rounded-lg border border-slate-200";
                     div.innerHTML = `
                         <span class="font-bold text-sm text-slate-800">${t}</span>
-                        <input type="number" step="0.01" data-ticker="${t}" value="${currPrice}" class="ticker-price-input w-32 bg-white border border-slate-300 rounded p-1 text-sm text-left focus:ring-2 focus:ring-blue-500 outline-none">
+                        <input type="number" step="0.01" data-ticker="${t}" value="${currPrice}" step="0.0001" class="ticker-price-input w-32 bg-white border border-slate-300 rounded p-1 text-sm text-left focus:ring-2 focus:ring-blue-500 outline-none">
                     `;
                     container.appendChild(div);
                 });
@@ -1885,6 +1885,8 @@
 
             document.getElementById('prices-modal').classList.remove('hidden');
             document.getElementById('prices-modal').classList.add('flex');
+            // Refresh each ticker in the background; never block opening the modal.
+            tickers.forEach(t => fetchCurrentMarketPrice(t));
         };
 
         window.closePricesModal = function closePricesModal() {
