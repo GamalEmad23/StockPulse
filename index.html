@@ -416,18 +416,18 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-bold text-slate-700 mb-1">سعر الشراء</label>
-                        <input type="number" id="tx-buy-price" step="0.01" min="0.0001" required placeholder="سعر الشراء" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                        <input type="number" id="tx-buy-price" step="0.0001" min="0.0001" required placeholder="سعر الشراء" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
                     </div>
                     <div id="sell-price-wrap" class="hidden">
                         <label class="block text-xs font-bold text-slate-700 mb-1">سعر البيع</label>
-                        <input type="number" id="tx-sell-price" step="0.01" min="0.0001" placeholder="سعر البيع" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                        <input type="number" id="tx-sell-price" step="0.0001" min="0.0001" placeholder="سعر البيع" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
                     </div>
                 </div>
 
                 <div>
                     <label id="tx-current-price-label" class="block text-xs font-bold text-slate-700 mb-1">سعر السوق الحالي (للصفقات المفتوحة)</label>
                     <div class="flex gap-2 items-center">
-                        <input type="number" id="tx-current-price" step="0.01" min="0.0001" placeholder="سيتم جلب السعر تلقائياً" readonly class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                        <input type="number" id="tx-current-price" step="0.0001" min="0.0001" placeholder="سيتم جلب السعر تلقائياً" readonly class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
                         <span id="tx-price-status" class="text-[11px] text-slate-400 whitespace-nowrap">—</span>
                     </div>
                 </div>
@@ -1028,9 +1028,11 @@
         };
 
         function getTxPrices(t) {
-            const buyPrice = Number(t.buyPrice ?? (t.type === 'شراء' ? t.price : t.price) ?? 0);
+            // Keep the three prices independent. Never use the buy price as a fake
+            // market price; an unavailable market price must stay unavailable.
+            const buyPrice = Number(t.buyPrice ?? t.price ?? 0);
             const sellPrice = Number(t.sellPrice ?? (t.type === 'بيع' ? t.price : 0) ?? 0);
-            const currentPrice = Number(t.currentPrice ?? buyPrice ?? 0);
+            const currentPrice = Number(t.currentPrice ?? 0);
             return { buyPrice, sellPrice, currentPrice };
         }
 
@@ -1038,30 +1040,39 @@
             const shares = Number(t.shares) || 0;
             const fee = Number(t.fee) || 0;
             const { buyPrice, sellPrice, currentPrice } = getTxPrices(t);
-            const buyCost = (shares * buyPrice) + (t.type === 'شراء' ? fee : 0);
-            const sellRevenue = (shares * (t.type === 'بيع' ? sellPrice : currentPrice)) - (t.type === 'بيع' ? fee : 0);
+            const grossBuyCost = shares * buyPrice;
 
+            // SELL: compare the actual selling price with the original buying price.
+            // Commission is deducted from the proceeds.
             if (t.type === 'بيع') {
-                const pl = sellRevenue - (shares * buyPrice);
-                const ratio = (shares * buyPrice) > 0 ? (pl / (shares * buyPrice)) * 100 : 0;
-                return { pl, ratio, buyCost: shares * buyPrice, value: sellRevenue };
+                const sellRevenue = (shares * sellPrice) - fee;
+                const pl = sellRevenue - grossBuyCost;
+                const ratio = grossBuyCost > 0 ? (pl / grossBuyCost) * 100 : null;
+                return { pl, ratio, buyCost: grossBuyCost, value: sellRevenue, marketValue: null, hasCurrentPrice: true };
             }
 
+            // OPEN BUY: compare the live market value with the amount invested.
+            // Do not calculate a fake 0% result when the live price is unavailable.
             if (t.status === 'مفتوحة') {
+                if (!(currentPrice > 0)) {
+                    return { pl: null, ratio: null, buyCost: grossBuyCost + fee, value: null, marketValue: null, hasCurrentPrice: false };
+                }
                 const currentValue = shares * currentPrice;
-                const pl = currentValue - buyCost;
-                const ratio = buyCost > 0 ? (pl / buyCost) * 100 : 0;
-                return { pl, ratio, buyCost, value: currentValue };
+                const pl = currentValue - grossBuyCost - fee;
+                // ROI is net profit/loss relative to the original invested amount.
+                const ratio = grossBuyCost > 0 ? (pl / grossBuyCost) * 100 : null;
+                return { pl, ratio, buyCost: grossBuyCost + fee, value: currentValue, marketValue: currentValue, hasCurrentPrice: true };
             }
 
-            // A closed buy is kept compatible with the old data model; if a sale price exists use it.
-            if (t.sellPrice != null && Number(t.sellPrice) > 0) {
-                const pl = (shares * Number(t.sellPrice)) - buyCost - fee;
-                const ratio = buyCost > 0 ? (pl / buyCost) * 100 : 0;
-                return { pl, ratio, buyCost, value: shares * Number(t.sellPrice) };
+            // Backward compatibility for old closed-buy records that contain sellPrice.
+            if (sellPrice > 0) {
+                const sellRevenue = (shares * sellPrice) - fee;
+                const pl = sellRevenue - grossBuyCost;
+                const ratio = grossBuyCost > 0 ? (pl / grossBuyCost) * 100 : null;
+                return { pl, ratio, buyCost: grossBuyCost + fee, value: sellRevenue, marketValue: null, hasCurrentPrice: true };
             }
 
-            return { pl: 0, ratio: 0, buyCost, value: 0 };
+            return { pl: null, ratio: null, buyCost: grossBuyCost + fee, value: null, marketValue: null, hasCurrentPrice: false };
         }
 
         function recalculateMetricsAndCharts() {
@@ -1072,10 +1083,12 @@
             transactions.forEach(t => {
                 const result = calculateTransactionPL(t);
                 if (t.type === 'شراء' && t.status === 'مفتوحة') {
-                    totalMarketValue += result.value;
-                    totalUnrealizedPL += result.pl;
+                    if (result.hasCurrentPrice) {
+                        totalMarketValue += result.value || 0;
+                        totalUnrealizedPL += result.pl || 0;
+                    }
                 } else if (t.type === 'بيع' || (t.type === 'شراء' && t.status === 'مغلقة')) {
-                    totalRealizedPL += result.pl;
+                    totalRealizedPL += result.pl || 0;
                 }
             });
 
@@ -1131,11 +1144,11 @@
                     <td class="p-3 font-semibold">${Number(t.shares).toLocaleString()}</td>
                     <td class="p-3" title="${t.type === 'بيع' ? `سعر الشراء: ${buyPrice.toFixed(2)}` : 'سعر الشراء'}">${priceLabel}</td>
                     <td class="p-3 text-slate-400 text-xs">${Number(t.fee || 0).toFixed(2)}</td>
-                    <td class="p-3 font-bold text-slate-800">${result.value.toLocaleString('ar-EG', { style: 'currency', currency: 'EGP' })}</td>
-                    <td class="p-3 font-semibold">${t.type === 'شراء' && t.status === 'مفتوحة' ? currentPrice.toFixed(2) : '-'}</td>
+                    <td class="p-3 font-bold text-slate-800">${result.value == null ? '—' : result.value.toLocaleString('ar-EG', { style: 'currency', currency: 'EGP' })}</td>
+                    <td class="p-3 font-semibold">${t.type === 'شراء' && t.status === 'مفتوحة' ? (currentPrice > 0 ? currentPrice.toFixed(4) : '—') : '-'}</td>
                     <td class="p-3"><span class="px-2 py-0.5 rounded text-xs font-bold ${t.status === 'مفتوحة' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}">${t.status}</span></td>
-                    <td class="p-3 font-bold ${result.pl >= 0 ? 'text-emerald-600' : 'text-rose-600'}">${result.pl.toFixed(2)}</td>
-                    <td class="p-3 font-bold text-xs ${result.ratio >= 0 ? 'text-emerald-600' : 'text-rose-600'}">${result.ratio.toFixed(2)}%</td>
+                    <td class="p-3 font-bold ${result.pl == null ? 'text-slate-400' : (result.pl >= 0 ? 'text-emerald-600' : 'text-rose-600')}">${result.pl == null ? '—' : result.pl.toFixed(2)}</td>
+                    <td class="p-3 font-bold text-xs ${result.ratio == null ? 'text-slate-400' : (result.ratio >= 0 ? 'text-emerald-600' : 'text-rose-600')}">${result.ratio == null ? '—' : result.ratio.toFixed(2) + '%'}</td>
                     <td class="p-3 text-center whitespace-nowrap">
                         <button onclick="openEditModal('${t.id}')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded ml-1 transition-colors">تعديل</button>
                         <button onclick="deleteTx('${t.id}')" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 px-2 py-1 rounded transition-colors">حذف</button>
@@ -1303,20 +1316,40 @@
         }
 
         function updateBuyProfitPreview() {
+            const type = document.getElementById('tx-type')?.value || 'شراء';
             const buy = Number(document.getElementById('tx-buy-price')?.value);
+            const sell = Number(document.getElementById('tx-sell-price')?.value);
             const current = Number(document.getElementById('tx-current-price')?.value);
             const shares = Number(document.getElementById('tx-shares')?.value) || 0;
             const fee = Number(document.getElementById('tx-fee')?.value) || 0;
             const preview = document.getElementById('tx-pl-preview');
-            if (!preview || !Number.isFinite(buy) || buy <= 0 || !Number.isFinite(current) || current <= 0) return;
-            const cost = shares * buy + fee;
-            const pl = shares * current - cost;
-            const ratio = cost > 0 ? (pl / cost) * 100 : 0;
-            preview.textContent = `متوقع الآن: ${pl.toLocaleString('ar-EG', {minimumFractionDigits:2, maximumFractionDigits:2})} ج.م (${ratio.toFixed(2)}%)`;
+            if (!preview) return;
+
+            if (!(buy > 0) || !(shares > 0)) {
+                preview.textContent = '';
+                return;
+            }
+
+            let pl = null;
+            let ratio = null;
+            if (type === 'بيع' && sell > 0) {
+                pl = (shares * sell) - fee - (shares * buy);
+                ratio = ((pl / (shares * buy)) * 100);
+            } else if (type === 'شراء' && current > 0) {
+                pl = (shares * current) - (shares * buy) - fee;
+                ratio = ((pl / (shares * buy)) * 100);
+            }
+
+            if (pl == null || !Number.isFinite(pl)) {
+                preview.textContent = '';
+                return;
+            }
+            const sign = pl > 0 ? 'مكسب' : (pl < 0 ? 'خسارة' : 'تعادل');
+            preview.textContent = `${sign}: ${pl.toLocaleString('ar-EG', {minimumFractionDigits:2, maximumFractionDigits:2})} ج.م (${ratio.toFixed(2)}%)`;
             preview.className = `text-xs font-bold mt-2 ${pl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`;
         }
 
-                function updateTransactionPriceFields() {
+        function updateTransactionPriceFields() {
             const type = document.getElementById('tx-type')?.value || 'شراء';
             const sellWrap = document.getElementById('sell-price-wrap');
             const sellInput = document.getElementById('tx-sell-price');
@@ -1343,7 +1376,7 @@
         document.getElementById('tx-ticker')?.addEventListener('blur', () => {
             if ((document.getElementById('tx-type')?.value || 'شراء') === 'شراء') startMarketPriceAutoRefresh();
         });
-        ['tx-buy-price', 'tx-shares', 'tx-fee'].forEach(id => {
+        ['tx-buy-price', 'tx-sell-price', 'tx-shares', 'tx-fee'].forEach(id => {
             document.getElementById(id)?.addEventListener('input', updateBuyProfitPreview);
         });
         document.getElementById('tx-current-price')?.addEventListener('input', updateBuyProfitPreview);
@@ -1432,6 +1465,7 @@
             window.closeModal();
 
             showToast("تم حفظ الصفقة محلياً 💾");
+            flushPendingSyncQueue();
         };
 
         window.openCashModal = function openCashModal() {
