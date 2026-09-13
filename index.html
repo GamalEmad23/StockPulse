@@ -533,6 +533,7 @@
         let auth = null;
         let userId = null;
         let unsubs = []; // Store active firestore snapshot listeners for cleanup on user switch
+        let pendingSyncQueue = []; // Offline sync queue for queued operations
 
         // Chart instances
         let allocationChartInstance = null;
@@ -574,6 +575,7 @@
                 const storageKey = `stock_dashboard_${userId || 'default'}`;
                 localStorage.setItem(`${storageKey}_transactions`, JSON.stringify(transactions));
                 localStorage.setItem(`${storageKey}_settings`, JSON.stringify({ depositedCapital, availableCash }));
+                localStorage.setItem(`${storageKey}_pendingQueue`, JSON.stringify(pendingSyncQueue));
                 if (userId) localStorage.setItem('stock_dashboard_active_user_id', userId);
             } catch (e) {
                 console.error("Local storage save error:", e);
@@ -585,11 +587,15 @@
                 const storageKey = `stock_dashboard_${userId || 'default'}`;
                 const localSettings = localStorage.getItem(`${storageKey}_settings`);
                 const localTxs = localStorage.getItem(`${storageKey}_transactions`);
+                const localQueue = localStorage.getItem(`${storageKey}_pendingQueue`);
                 
                 if (localSettings) {
                     const parsed = JSON.parse(localSettings);
                     depositedCapital = parsed.depositedCapital ?? 0;
                     availableCash = parsed.availableCash ?? 0;
+                }
+                if (localQueue) {
+                    pendingSyncQueue = JSON.parse(localQueue) || [];
                 }
                 if (localTxs !== null) {
                     transactions = JSON.parse(localTxs);
@@ -609,7 +615,7 @@
             if (displayEl) displayEl.innerText = userId || 'غير معروف';
             if (modalEl) modalEl.value = userId || '';
 
-            // Update Browser URL seamlessly without refreshing (safely handled for blob / sandboxed iframe environments)
+            // Update Browser URL seamlessly without refreshing
             try {
                 if (userId && window.history && window.history.replaceState && !window.location.href.startsWith('blob:')) {
                     const newUrl = `${window.location.pathname}?id=${encodeURIComponent(userId)}`;
@@ -659,7 +665,7 @@
                 setTimeout(() => {
                     toast.classList.add('hidden');
                     toast.classList.remove('flex');
-                }, 3000);
+                }, 3500);
             }
         }
 
@@ -698,14 +704,60 @@
             unsubs.forEach(unsub => unsub && unsub());
             unsubs = [];
 
+            pendingSyncQueue = [];
             loadFromLocalStorage();
 
             if (db && userId) {
                 setupCloudListeners();
+                flushPendingSyncQueue();
             } else {
                 recalculateMetricsAndCharts();
             }
             showToast(`تم الانتقال لرمز المحفظة: ${userId}`);
+        }
+
+        // Automatic Offline Sync Queue Processor
+        async function flushPendingSyncQueue() {
+            if (!db || !userId || !navigator.onLine || pendingSyncQueue.length === 0) return;
+
+            updateSyncBadge("🔄 جاري رفع التغييرات المحفوظة أوفلاين...", "blue");
+
+            try {
+                const { doc, setDoc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                
+                const queueCopy = [...pendingSyncQueue];
+                const failedItems = [];
+
+                for (const item of queueCopy) {
+                    try {
+                        if (item.action === 'SET_TRANSACTION') {
+                            const docRef = doc(db, 'artifacts', appId, 'users', userId, 'transactions', String(item.id));
+                            await setDoc(docRef, item.data, { merge: true });
+                        } else if (item.action === 'DELETE_TRANSACTION') {
+                            const docRef = doc(db, 'artifacts', appId, 'users', userId, 'transactions', String(item.id));
+                            await deleteDoc(docRef);
+                        } else if (item.action === 'SET_SETTINGS') {
+                            const settingsDocRef = doc(db, 'artifacts', appId, 'users', userId, 'settings', 'portfolio');
+                            await setDoc(settingsDocRef, item.data, { merge: true });
+                        }
+                    } catch (err) {
+                        console.error("Queue item push failed, keeping in queue:", item, err);
+                        failedItems.push(item);
+                    }
+                }
+
+                pendingSyncQueue = failedItems;
+                saveToLocalStorage();
+
+                if (pendingSyncQueue.length === 0) {
+                    updateSyncBadge("متصل بالسحابة ☁️ (مباشر)", "emerald");
+                    showToast("تم رفع ومزامنة جميع التعديلات المحفوظة أوفلاين بنجاح! ☁️");
+                } else {
+                    updateSyncBadge(`💾 متبقي (${pendingSyncQueue.length}) تغييرات للرفع`, "amber");
+                }
+            } catch (e) {
+                console.error("Error during queue flush:", e);
+            }
         }
 
         async function setupCloudListeners() {
@@ -728,20 +780,30 @@
                 }, (err) => console.error("Error loading settings:", err));
                 unsubs.push(unsubSettings);
 
-                // 2. Transactions Snapshot (Live Sync across all connected devices)
+                // 2. Transactions Snapshot
                 const txCollectionRef = collection(db, 'artifacts', appId, 'users', userId, 'transactions');
                 const unsubTxs = onSnapshot(txCollectionRef, (snapshot) => {
-                    transactions = snapshot.docs.map(d => ({
-                        id: d.id,
-                        ...d.data()
-                    }));
-                    saveToLocalStorage();
-                    populateFilterOptions();
-                    applyFilters();
-                    updateSyncBadge("متصل بالسحابة ☁️ (مباشر)", "emerald");
+                    // Only update from cloud if local pending queue is empty to avoid overwriting pending edits
+                    if (pendingSyncQueue.length === 0) {
+                        transactions = snapshot.docs.map(d => ({
+                            id: d.id,
+                            ...d.data()
+                        }));
+                        saveToLocalStorage();
+                        populateFilterOptions();
+                        applyFilters();
+                    }
+                    
+                    if (navigator.onLine) {
+                        if (pendingSyncQueue.length > 0) {
+                            updateSyncBadge(`💾 أوفلاين/متبقي (${pendingSyncQueue.length}) للرفع`, "amber");
+                        } else {
+                            updateSyncBadge("متصل بالسحابة ☁️ (مباشر)", "emerald");
+                        }
+                    }
                 }, (err) => {
                     console.error("Error loading transactions:", err);
-                    updateSyncBadge("وضع محلي 💾", "amber");
+                    updateSyncBadge(`💾 أوفلاين محلي (${pendingSyncQueue.length} للرفع)`, "amber");
                 });
                 unsubs.push(unsubTxs);
 
@@ -759,18 +821,25 @@
                 userId = savedUserId || `usr_${Math.random().toString(36).substring(2, 9)}`;
                 updateUserIdUI();
                 loadFromLocalStorage();
-                updateSyncBadge("وضع محلي 💾", "blue");
+                updateSyncBadge("وضع محلي 💾", "amber");
                 return;
             }
 
             try {
                 const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
                 const { getAuth, signInAnonymously, signInWithCustomToken } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
-                const { getFirestore } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                const { getFirestore, enableIndexedDbPersistence } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
 
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
+
+                // Enable Firestore offline caching
+                try {
+                    await enableIndexedDbPersistence(db);
+                } catch (persErr) {
+                    console.warn("Firestore offline persistence notice:", persErr.code);
+                }
 
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     const credential = await signInWithCustomToken(auth, __initial_auth_token);
@@ -782,14 +851,16 @@
 
                 localStorage.setItem('stock_dashboard_active_user_id', userId);
                 updateUserIdUI();
+                loadFromLocalStorage();
                 await setupCloudListeners();
+                await flushPendingSyncQueue();
 
             } catch (err) {
                 console.warn("Cloud storage init fallback to local:", err);
                 userId = savedUserId || `usr_${Math.random().toString(36).substring(2, 9)}`;
                 updateUserIdUI();
                 loadFromLocalStorage();
-                updateSyncBadge("وضع المحفوظات 💾", "amber");
+                updateSyncBadge("وضع أوفلاين 💾", "amber");
             }
         }
 
@@ -799,27 +870,6 @@
                 badge.className = `text-xs px-2 py-0.5 rounded-full bg-${color}-900/60 text-${color}-400 border border-${color}-700/50 flex items-center gap-1.5`;
                 badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-${color}-400 animate-pulse"></span><span>${text}</span>`;
             }
-        }
-
-        async function seedInitialTransactions(txCollectionRef, settingsDocRef) {
-            // New user initialization: zero capital, zero cash, zero transactions
-            try {
-                const { setDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-                await setDoc(settingsDocRef, { depositedCapital: 0, availableCash: 0, seeded: true }, { merge: true });
-            } catch (e) {
-                console.warn("Initializing cloud settings failed", e);
-            }
-        }
-
-        function loadDefaultDemoData() {
-            if (loadFromLocalStorage()) return;
-            // Clean slate for new user sessions
-            transactions = [];
-            depositedCapital = 0;
-            availableCash = 0;
-            saveToLocalStorage();
-            populateFilterOptions();
-            applyFilters();
         }
 
         function populateFilterOptions() {
@@ -1112,21 +1162,16 @@
             if (idx !== -1) transactions[idx] = newTx;
             else transactions.unshift(newTx);
 
+            // Queue change for sync
+            pendingSyncQueue.push({ action: 'SET_TRANSACTION', id: id, data: newTx, timestamp: Date.now() });
+
             saveToLocalStorage();
             populateFilterOptions();
             window.applyFilters();
-
-            if (db && userId) {
-                try {
-                    const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-                    const docRef = doc(db, 'artifacts', appId, 'users', userId, 'transactions', String(id));
-                    await setDoc(docRef, newTx);
-                } catch (err) {
-                    console.error("Cloud save error:", err);
-                }
-            }
-
             window.closeModal();
+
+            showToast("تم حفظ الصفقة محلياً 💾");
+            flushPendingSyncQueue();
         };
 
         window.openCashModal = function openCashModal() {
@@ -1146,19 +1191,14 @@
             depositedCapital = parseFloat(document.getElementById('input-deposited-capital').value) || 0;
             availableCash = parseFloat(document.getElementById('input-available-cash').value) || 0;
             
+            pendingSyncQueue.push({ action: 'SET_SETTINGS', data: { depositedCapital, availableCash, seeded: true }, timestamp: Date.now() });
+
             saveToLocalStorage();
             recalculateMetricsAndCharts();
-
-            if (db && userId) {
-                try {
-                    const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-                    const settingsDocRef = doc(db, 'artifacts', appId, 'users', userId, 'settings', 'portfolio');
-                    await setDoc(settingsDocRef, { depositedCapital, availableCash, seeded: true }, { merge: true });
-                } catch (err) {
-                    console.error("Cloud cash submit error:", err);
-                }
-            }
             window.closeCashModal();
+
+            showToast("تم تحديث السيولة ورأس المال 💾");
+            flushPendingSyncQueue();
         };
 
         window.openPricesModal = function openPricesModal() {
@@ -1195,7 +1235,6 @@
 
         window.saveUpdatedPrices = async function saveUpdatedPrices() {
             const inputs = document.querySelectorAll('.ticker-price-input');
-            const updates = [];
             
             inputs.forEach(input => {
                 const ticker = input.getAttribute('data-ticker');
@@ -1204,25 +1243,17 @@
                 transactions.forEach(tx => {
                     if (tx.ticker === ticker) {
                         tx.currentPrice = newPrice;
-                        if (db && userId) {
-                            updates.push((async () => {
-                                const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-                                const docRef = doc(db, 'artifacts', appId, 'users', userId, 'transactions', String(tx.id));
-                                return setDoc(docRef, { currentPrice: newPrice }, { merge: true });
-                            })());
-                        }
+                        pendingSyncQueue.push({ action: 'SET_TRANSACTION', id: tx.id, data: { ...tx, currentPrice: newPrice }, timestamp: Date.now() });
                     }
                 });
             });
 
             saveToLocalStorage();
             window.applyFilters();
-
-            if (updates.length > 0) {
-                await Promise.all(updates);
-            }
-
             window.closePricesModal();
+
+            showToast("تم تحديث أسعار السوق 💾");
+            flushPendingSyncQueue();
         };
 
         window.deleteTx = function deleteTx(id) {
@@ -1242,20 +1273,15 @@
                 const targetIdStr = String(deleteTargetId);
                 transactions = transactions.filter(t => String(t.id) !== targetIdStr);
                 
+                pendingSyncQueue.push({ action: 'DELETE_TRANSACTION', id: targetIdStr, timestamp: Date.now() });
+
                 saveToLocalStorage();
                 populateFilterOptions();
                 window.applyFilters();
-
-                if (db && userId) {
-                    try {
-                        const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-                        const docRef = doc(db, 'artifacts', appId, 'users', userId, 'transactions', targetIdStr);
-                        await deleteDoc(docRef);
-                    } catch (err) {
-                        console.error("Cloud delete error:", err);
-                    }
-                }
                 window.closeDeleteModal();
+
+                showToast("تم حذف الصفقة محلياً 🗑️");
+                flushPendingSyncQueue();
             }
         };
 
@@ -1294,6 +1320,21 @@
             if (document.getElementById('res-total-cost')) document.getElementById('res-total-cost').innerText = totalCost.toLocaleString('ar-EG', { style: 'currency', currency: 'EGP' });
             if (document.getElementById('res-avg-price')) document.getElementById('res-avg-price').innerText = `${avgPrice.toFixed(2)} ج.م`;
         };
+
+        // Network Status Listeners for seamless Offline -> Online Syncing
+        window.addEventListener('online', () => {
+            showToast("تم استعادة الاتصال بالإنترنت! 🌐 جاري رفع التغييرات...");
+            if (!db) {
+                initCloudStorage();
+            } else {
+                flushPendingSyncQueue();
+            }
+        });
+
+        window.addEventListener('offline', () => {
+            updateSyncBadge(`💾 وضع الأوفلاين (${pendingSyncQueue.length} محفوظ محلياً)`, "amber");
+            showToast("انقطع الاتصال بالإنترنت 📶 - يتم الحفظ محلياً وسوف يتم الرفع فور عودة النت تلقائياً");
+        });
 
         // Initialize App on Window Load
         window.addEventListener('load', () => {
