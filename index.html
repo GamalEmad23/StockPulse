@@ -826,7 +826,7 @@
 
         // If local data exists from before cloud sync was enabled, upload it once only
         // when the corresponding cloud collection/document is actually empty.
-        async function bootstrapLocalDataToCloud() {
+        async function bootstrapLocalDataToCloud_DISABLED() {
             if (!db || !userId || !navigator.onLine) return;
 
             try {
@@ -853,7 +853,8 @@
         }
 
         async function setupCloudListeners() {
-            if (!db || !userId) return;
+            // Firestore paths are strictly scoped by the authenticated Firebase UID.
+            if (!db || !userId || !auth?.currentUser || auth.currentUser.uid !== userId) return;
             try {
                 const { doc, setDoc, onSnapshot, collection } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
                 
@@ -929,34 +930,38 @@
                 catch (e) { console.warn('Firestore persistence:', e.code || e); }
 
                 onAuthStateChanged(auth, async (firebaseUser) => {
-                    // Stop listeners before changing the active account.
+                    // HARD ACCOUNT ISOLATION:
+                    // 1) Stop every listener belonging to the previous account.
+                    // 2) Clear all in-memory portfolio data.
+                    // 3) Set the Firebase UID as the ONLY source of truth for the data namespace.
                     unsubs.forEach(unsub => unsub && unsub());
                     unsubs = [];
+                    resetPortfolioState();
 
                     if (!firebaseUser) {
                         userId = null;
-                        resetPortfolioState();
+                        localStorage.removeItem('stock_dashboard_active_user_id');
                         updateUserIdUI();
                         showAuthModal();
                         updateSyncBadge('سجل الدخول للمزامنة ☁️', 'amber');
                         return;
                     }
 
-                    // IMPORTANT: switch the data namespace first, then load ONLY this UID's data.
-                    // This prevents account B from inheriting account A's in-memory portfolio.
-                    userId = firebaseUser.uid;
-                    localStorage.setItem('stock_dashboard_active_user_id', userId);
+                    // NEVER use a previous account's UID, email, local data, or in-memory data.
+                    // Firebase Authentication UID uniquely identifies the current account.
+                    const authenticatedUid = firebaseUser.uid;
+                    userId = authenticatedUid;
+                    localStorage.setItem('stock_dashboard_active_user_id', authenticatedUid);
                     updateUserIdUI();
                     hideAuthModal();
 
-                    const hasLocalState = loadFromLocalStorage();
+                    // Load only local cache explicitly namespaced to THIS Firebase UID.
+                    // If it does not exist, loadFromLocalStorage() keeps the portfolio empty.
+                    loadFromLocalStorage();
 
-                    // Only migrate local data that actually belongs to this UID. Never use
-                    // whatever happens to be left in memory from a previously signed-in user.
-                    if (hasLocalState) {
-                        await bootstrapLocalDataToCloud();
-                    }
-
+                    // IMPORTANT: do NOT automatically copy local/in-memory data into a new
+                    // Firebase account. This was the source of the cross-account wallet leak.
+                    // Firestore is the source of truth; the listener below loads only this UID.
                     await setupCloudListeners();
                     await flushPendingSyncQueue();
                     updateSyncBadge('متصل بالسحابة ☁️ (مباشر)', 'emerald');
