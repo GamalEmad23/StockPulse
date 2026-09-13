@@ -1338,7 +1338,7 @@
         // IMPORTANT: this page is hosted on GitHub Pages, so there is no backend
         // request proxy. We therefore use a short timeout, parallel sources, and
         // a tiny local cache so the UI never sits waiting for a dead endpoint.
-        const MARKET_PRICE_CACHE_TTL = 30 * 60 * 1000;
+        const MARKET_PRICE_CACHE_TTL = 2 * 60 * 1000;
         const MARKET_PRICE_TIMEOUT = 1600;
 
         function withTimeout(promise, ms = MARKET_PRICE_TIMEOUT) {
@@ -1581,13 +1581,10 @@
             // Show cached price immediately. The network refresh happens in the
             // background, so opening/editing a transaction never feels blocked.
             const cached = getCachedMarketPrice(cleanTicker);
-            if (cached > 0 && input) {
-                input.value = Number(cached).toFixed(4);
-                if (status) status.textContent = 'السعر المحفوظ ✓ — جاري التحديث…';
-                updateBuyProfitPreview();
-            } else if (status) {
-                status.textContent = 'جاري جلب السعر…';
-            }
+            // A cached quote is only a fallback. Never show it as the current
+            // market price while a fresh quote is being requested.
+            if (input) input.value = '';
+            if (status) status.textContent = 'جاري جلب أحدث سعر…';
 
             // Query multiple GET-based sources, but select the quote using an explicit
             // source priority. This prevents a stale historical provider from
@@ -1597,10 +1594,11 @@
             // while another source already has 0.462). Query the strongest
             // sources together and prefer them in a deterministic order.
             const sourceResults = await Promise.allSettled([
-                fetchInvestingViaJina(cleanTicker).then(price => ({ price, provider: 'Investing' })),
+                // Use EGX quote pages as the authoritative sources. TradingView/EGXpilot
+                // are intentionally NOT used here because they can expose an older close
+                // for EGX symbols (e.g. 23.47 while the latest quote is higher).
                 fetchDecyphaViaJina(cleanTicker).then(price => ({ price, provider: 'Decypha' })),
-                fetchTradingViewEgyptDirect(cleanTicker).then(price => ({ price, provider: 'TradingView' })),
-                fetchEGXpilotDirect(cleanTicker).then(price => ({ price, provider: 'EGXpilot' })),
+                fetchInvestingViaJina(cleanTicker).then(price => ({ price, provider: 'Investing' })),
                 fetchMubasherViaJina(cleanTicker).then(price => ({ price, provider: 'Mubasher' })),
                 fetchYahooDirect(cleanTicker).then(price => ({ price, provider: 'Yahoo' }))
             ]);
@@ -1609,10 +1607,10 @@
                 .filter(r => r.status === 'fulfilled' && Number.isFinite(Number(r.value?.price)) && Number(r.value.price) > 0)
                 .map(r => r.value);
 
-            // Decypha is the primary EGX quote source here because its KRDI page
-            // exposes a clearly labelled latest-update price (for example 0.462 EGP).
-            // Investing/other historical pages can lag or show the prior session.
-            const priority = ['TradingView', 'Mubasher', 'EGXpilot', 'Decypha', 'Investing', 'Yahoo'];
+            // Decypha/Investing expose the latest EGX quote; Mubasher is the
+            // secondary confirmation source. Never let TradingView/EGXpilot
+            // overwrite a verified EGX quote with an older close.
+            const priority = ['Decypha', 'Investing', 'Mubasher', 'Yahoo'];
             let result = successful.sort((a, b) => priority.indexOf(a.provider) - priority.indexOf(b.provider))[0] || null;
 
             if (!result) {
