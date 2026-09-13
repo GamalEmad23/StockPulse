@@ -1425,6 +1425,64 @@
             throw new Error('EGXpilot unavailable');
         }
 
+
+        // Investing / Decypha are used before Mubasher because Mubasher can
+        // occasionally expose the previous quote for EGX small-cap symbols.
+        function extractPriceNear(text, patterns) {
+            const clean = String(text || '').replace(/\u00a0/g, ' ');
+            for (const pattern of patterns) {
+                const m = clean.match(pattern);
+                if (m) {
+                    const n = Number(String(m[1]).replace(/,/g, ''));
+                    if (Number.isFinite(n) && n > 0 && n < 100000) return n;
+                }
+            }
+            return null;
+        }
+
+        async function fetchInvestingViaJina(ticker) {
+            const symbol = normalizeEgyptTicker(ticker);
+            const target = `https://www.investing.com/equities/al-khair-river-for-development`;
+            // KRDI is the page above; keep this source explicit so we do not
+            // accidentally parse another ticker.
+            if (symbol !== 'KRDI') throw new Error('Investing mapping unavailable');
+            const response = await withTimeout(fetch(`https://r.jina.ai/${target}`, { cache: 'no-store', headers: { 'Accept': 'text/plain' } }), 2800);
+            if (!response.ok) throw new Error('Investing HTTP ' + response.status);
+            const text = await response.text();
+            const price = extractPriceNear(text, [
+                /current price[^\d]{0,80}([0-9]+\.[0-9]+)/i,
+                /current[^\d]{0,80}price[^\d]{0,80}([0-9]+\.[0-9]+)/i,
+                /السعر الحالي[^\d]{0,80}([0-9]+\.[0-9]+)/i
+            ]);
+            if (price) return price;
+            throw new Error('Investing price not found');
+        }
+
+        async function fetchDecyphaViaJina(ticker) {
+            const symbol = normalizeEgyptTicker(ticker);
+            const target = `https://beta1.decypha.com/ar/stock-chart/public/egx/${encodeURIComponent(symbol)}`;
+            const response = await withTimeout(fetch(`https://r.jina.ai/${target}`, { cache: 'no-store', headers: { 'Accept': 'text/plain' } }), 2400);
+            if (!response.ok) throw new Error('Decypha HTTP ' + response.status);
+            const text = await response.text();
+
+            // Decypha currently exposes the quote in this form:
+            // "آخر تحديث:" -> "0.462 EGP" -> change -> percentage.
+            // The old parser expected the number immediately after the label,
+            // so it failed when Decypha inserted a bullet/newline.
+            const updateMatch = String(text).match(/آخر تحديث\s*[:：]?\s*[\s\S]{0,120}?([0-9]+(?:\.[0-9]+)?)\s*EGP/i);
+            const englishMatch = String(text).match(/Last update\s*[:：]?\s*[\s\S]{0,120}?([0-9]+(?:\.[0-9]+)?)\s*EGP/i);
+            const price = Number(updateMatch?.[1] ?? englishMatch?.[1]);
+            if (Number.isFinite(price) && price > 0) return price;
+
+            // Fallback for layout changes. Prefer the first price followed by EGP
+            // in the small block immediately following the update label.
+            const block = String(text).split(/آخر تحديث\s*[:：]?/i)[1]?.slice(0, 180) || '';
+            const fallback = block.match(/([0-9]+(?:\.[0-9]+)?)\s*EGP/i);
+            const n = Number(fallback?.[1]);
+            if (Number.isFinite(n) && n > 0) return n;
+            throw new Error('Decypha price not found');
+        }
+
         async function fetchMubasherViaJina(ticker) {
             const symbol = normalizeEgyptTicker(ticker);
             const target = `https://english.mubasher.info/markets/EGX/stocks/${encodeURIComponent(symbol)}`;
@@ -1467,19 +1525,33 @@
                 status.textContent = 'جاري جلب السعر…';
             }
 
-            // First race the GET-based sources that work well from GitHub Pages.
-            // TradingView/Yahoo remain as additional fallbacks.
-            const directRequests = [
+            // Query multiple GET-based sources, but select the quote using an explicit
+            // source priority. This prevents a stale historical provider from
+            // winning merely because it responded faster.
+            // Do NOT accept the first successful provider blindly. Some EGX
+            // providers can return a delayed/previous close (for example 0.460
+            // while another source already has 0.462). Query the strongest
+            // sources together and prefer them in a deterministic order.
+            const sourceResults = await Promise.allSettled([
+                fetchInvestingViaJina(cleanTicker).then(price => ({ price, provider: 'Investing' })),
+                fetchDecyphaViaJina(cleanTicker).then(price => ({ price, provider: 'Decypha' })),
+                fetchTradingViewEgyptDirect(cleanTicker).then(price => ({ price, provider: 'TradingView' })),
                 fetchEGXpilotDirect(cleanTicker).then(price => ({ price, provider: 'EGXpilot' })),
                 fetchMubasherViaJina(cleanTicker).then(price => ({ price, provider: 'Mubasher' })),
-                fetchTradingViewEgyptDirect(cleanTicker).then(price => ({ price, provider: 'TradingView' })),
                 fetchYahooDirect(cleanTicker).then(price => ({ price, provider: 'Yahoo' }))
-            ];
+            ]);
 
-            let result = null;
-            try {
-                result = await Promise.any(directRequests);
-            } catch (_) {
+            const successful = sourceResults
+                .filter(r => r.status === 'fulfilled' && Number.isFinite(Number(r.value?.price)) && Number(r.value.price) > 0)
+                .map(r => r.value);
+
+            // Decypha is the primary EGX quote source here because its KRDI page
+            // exposes a clearly labelled latest-update price (for example 0.462 EGP).
+            // Investing/other historical pages can lag or show the prior session.
+            const priority = ['Decypha', 'TradingView', 'EGXpilot', 'Mubasher', 'Investing', 'Yahoo'];
+            let result = successful.sort((a, b) => priority.indexOf(a.provider) - priority.indexOf(b.provider))[0] || null;
+
+            if (!result) {
                 // Last resort only: public CORS proxies. They are deliberately not
                 // part of the first race because they are the slowest/least stable.
                 try {
