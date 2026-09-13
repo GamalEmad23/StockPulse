@@ -186,7 +186,7 @@
                 <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow sm:col-span-2 lg:col-span-1">
                     <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">العائد على الاستثمار (ROI)</div>
                     <div id="kpi-roi" class="text-xl font-extrabold text-slate-900">0.00%</div>
-                    <div class="text-[11px] text-slate-500 mt-1">العائد مقارنة برأس المال</div>
+                    <div class="text-[11px] text-slate-500 mt-1">صافي الربح والخسارة ÷ تكلفة الاستثمار</div>
                 </div>
             </div>
 
@@ -1080,21 +1080,47 @@
             let totalMarketValue = 0;
             let totalRealizedPL = 0;
             let totalUnrealizedPL = 0;
+            let totalCostBasis = 0;
 
             transactions.forEach(t => {
                 const result = calculateTransactionPL(t);
+                const shares = Number(t.shares) || 0;
+                const fee = Number(t.fee) || 0;
+                const buyPrice = Number(t.buyPrice ?? t.price ?? 0);
+                const costBasis = (shares * buyPrice) + fee;
+
+                // For an open BUY, the invested amount is its cost basis and the
+                // current market value is based ONLY on the live market price.
                 if (t.type === 'شراء' && t.status === 'مفتوحة') {
+                    totalCostBasis += costBasis;
                     if (result.hasCurrentPrice) {
                         totalMarketValue += result.value || 0;
                         totalUnrealizedPL += result.pl || 0;
                     }
-                } else if (t.type === 'بيع' || (t.type === 'شراء' && t.status === 'مغلقة')) {
+                }
+                // For a SELL, result.pl is the realized return versus its recorded
+                // buy price. Include the original cost basis once in the ROI denominator.
+                else if (t.type === 'بيع') {
+                    totalCostBasis += costBasis;
+                    totalRealizedPL += result.pl || 0;
+                }
+                // Backward-compatible closed BUY records with a recorded sellPrice.
+                else if (t.type === 'شراء' && t.status === 'مغلقة' && Number(t.sellPrice) > 0) {
+                    totalCostBasis += costBasis;
                     totalRealizedPL += result.pl || 0;
                 }
             });
 
             const overallPortfolioValue = totalMarketValue + availableCash;
-            const roi = depositedCapital > 0 ? ((overallPortfolioValue - depositedCapital) / depositedCapital) * 100 : 0;
+
+            // Portfolio ROI must measure investment performance, not the amount of
+            // cash sitting in the account. Therefore use total realized + unrealized
+            // P/L divided by the cost basis of the positions represented by the
+            // transaction ledger. If there are no transaction costs to use, fall back
+            // to deposited capital for compatibility with an older portfolio.
+            const totalPL = totalRealizedPL + totalUnrealizedPL;
+            const roiDenominator = totalCostBasis > 0 ? totalCostBasis : depositedCapital;
+            const roi = roiDenominator > 0 ? (totalPL / roiDenominator) * 100 : 0;
 
             const formatCurrency = (val) => val.toLocaleString('ar-EG', { style: 'currency', currency: 'EGP' });
 
