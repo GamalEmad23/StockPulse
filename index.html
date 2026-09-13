@@ -723,7 +723,10 @@
         async function saveTransactionToCloud(tx) {
             if (!db || !userId) throw new Error('المستخدم غير مسجل الدخول.');
             const { setDoc } = await import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-firestore.js`);
-            await setDoc(transactionDocRef(tx.id), { ...tx, id: undefined }, { merge: true });
+            // IMPORTANT: never send id: undefined to Firestore. Undefined fields can
+            // make writes fail, leaving the local retry queue stuck forever.
+            const { id, ...cloudData } = tx;
+            await setDoc(transactionDocRef(id), cloudData, { merge: true });
         }
 
         async function saveSettingsToCloud() {
