@@ -690,6 +690,10 @@
         let transactions = [];
         let filteredTransactions = [];
 
+        // Expose the live transaction array to the analytics module without
+        // creating a second copy of the portfolio state.
+        window.getPortfolioTransactions = function () { return transactions; };
+
         // Immediately attach window functions so HTML inline onclick events work without delay
         window.switchTab = function switchTab(tabName) {
             const tabs = ['dashboard', 'transactions', 'wacc', 'analytics', 'sharia', 'guide'];
@@ -714,6 +718,12 @@
             }
             if (tabName === 'sharia') {
                 renderShariaStocks();
+            }
+            if (tabName === 'analytics') {
+                // Analytics reads the real portfolio state from the main app.
+                if (typeof window.refreshPortfolioAnalytics === 'function') {
+                    window.refreshPortfolioAnalytics();
+                }
             }
         };
 
@@ -1176,6 +1186,7 @@
 
             renderTransactionsTable();
             recalculateMetricsAndCharts();
+            if (typeof window.refreshPortfolioAnalytics === 'function') window.refreshPortfolioAnalytics();
         };
 
         window.resetFilters = function resetFilters() {
@@ -2274,9 +2285,17 @@ document.addEventListener('DOMContentLoaded',()=>{document.getElementById('shari
 (function(){
   function n(v){const x=Number(v);return Number.isFinite(x)?x:0}
   function money(v){return n(v).toLocaleString('ar-EG',{minimumFractionDigits:2,maximumFractionDigits:2})+' ج.م'}
+  function getTransactions(){
+    try{
+      if(typeof window.getPortfolioTransactions === 'function'){
+        const live=window.getPortfolioTransactions();
+        if(Array.isArray(live)) return live;
+      }
+    }catch(e){ console.warn('Portfolio analytics state read failed:',e); }
+    return Array.isArray(window.transactions) ? window.transactions : [];
+  }
   function run(){
-    if(!Array.isArray(window.transactions)) return;
-    const tx=window.transactions;
+    const tx=getTransactions();
     const closed=tx.filter(t=>n(t.sellPrice)>0 || String(t.status||'')==='مغلقة');
     let pnl=0,wins=0,losses=0,grossWin=0,grossLoss=0,best=null,worst=null;
     closed.forEach(t=>{
@@ -2327,9 +2346,9 @@ document.addEventListener('DOMContentLoaded',()=>{document.getElementById('shari
   }
   window.refreshPortfolioAnalytics=run;
   window.exportPortfolioAnalytics=function(){
-    if(!Array.isArray(window.transactions))return;
+    const tx=getTransactions();
     const rows=[['Ticker','Shares','Buy Price','Sell Price','Fee','P/L']];
-    window.transactions.forEach(t=>rows.push([t.ticker,t.shares,t.buyPrice,t.sellPrice||'',t.fee||'',t.sellPrice?((n(t.shares)*n(t.sellPrice))-(n(t.shares)*n(t.buyPrice))-n(t.fee)):'' ]));
+    tx.forEach(t=>rows.push([t.ticker,t.shares,t.buyPrice,t.sellPrice||'',t.fee||'',t.sellPrice?((n(t.shares)*n(t.sellPrice))-(n(t.shares)*n(t.buyPrice))-n(t.fee)):'' ]));
     const csv='\uFEFF'+rows.map(r=>r.map(v=>`"${String(v??'').replaceAll('"','""')}"`).join(',')).join('\n');
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='StockPulse_Portfolio_Analysis.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   };
@@ -2340,6 +2359,13 @@ document.addEventListener('DOMContentLoaded',()=>{document.getElementById('shari
   };
   window.addEventListener('load',()=>setTimeout(run,500));
 })();
+</script>
+<script id="portfolio-analytics-init-fix">
+document.addEventListener('DOMContentLoaded', function(){
+  setTimeout(function(){
+    if(typeof window.refreshPortfolioAnalytics === 'function') window.refreshPortfolioAnalytics();
+  }, 50);
+});
 </script>
 </body>
 </html>
