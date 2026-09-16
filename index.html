@@ -2285,23 +2285,67 @@ document.addEventListener('DOMContentLoaded',()=>{document.getElementById('shari
 (function(){
   function n(v){const x=Number(v);return Number.isFinite(x)?x:0}
   function money(v){return n(v).toLocaleString('ar-EG',{minimumFractionDigits:2,maximumFractionDigits:2})+' ج.م'}
+  function parseNum(v){
+    if(v===null||v===undefined)return 0;
+    let s=String(v).trim()
+      .replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+      .replace(/[٬]/g,'').replace(/,/g,'')
+      .replace(/[٫]/g,'.');
+    const m=s.replace(/[^0-9.+-]/g,'');
+    const x=Number(m);
+    return Number.isFinite(x)?x:0;
+  }
+  function parseDomTransactions(){
+    const body=document.getElementById('transactions-table-body');
+    if(!body)return [];
+    const result=[];
+    [...body.querySelectorAll('tr')].forEach((tr,idx)=>{
+      const cells=[...tr.querySelectorAll('td')].map(td=>td.textContent.trim());
+      if(cells.length<10)return;
+      const date=cells[1]||'';
+      const ticker=(cells[2]||'').replace(/\s+/g,'').toUpperCase();
+      const type=cells[3]||'';
+      const shares=parseNum(cells[4]);
+      const priceText=cells[5]||'';
+      const fee=parseNum(cells[6]);
+      const total=parseNum(cells[7]);
+      const current=parseNum(cells[8]);
+      const status=cells[9]||'';
+      const pl=parseNum(cells[10]);
+      let buyPrice=0,sellPrice=0;
+      const bp=priceText.match(/شراء\s*([0-9.]+)/);
+      const sp=priceText.match(/بيع\s*([0-9.]+)/);
+      if(bp) buyPrice=parseNum(bp[1]);
+      if(sp) sellPrice=parseNum(sp[1]);
+      if(!buyPrice && !bp && !sp) buyPrice=parseNum(priceText);
+      if(type.includes('بيع') && !sellPrice && !sp) sellPrice=parseNum(priceText);
+      result.push({id:idx+1,date,ticker,type,status,shares,buyPrice,sellPrice,fee,currentPrice:current,_domPL:pl,_domTotal:total});
+    });
+    return result;
+  }
   function getTransactions(){
     try{
       if(typeof window.getPortfolioTransactions === 'function'){
         const live=window.getPortfolioTransactions();
-        if(Array.isArray(live)) return live;
+        if(Array.isArray(live) && live.length) return live;
       }
     }catch(e){ console.warn('Portfolio analytics state read failed:',e); }
-    return Array.isArray(window.transactions) ? window.transactions : [];
+    try{
+      if(Array.isArray(window.transactions) && window.transactions.length) return window.transactions;
+    }catch(e){}
+    return parseDomTransactions();
   }
   function run(){
     const tx=getTransactions();
-    const closed=tx.filter(t=>n(t.sellPrice)>0 || String(t.status||'')==='مغلقة');
+    const closed=tx.filter(t=>n(t.sellPrice)>0 || String(t.status||'').includes('مغلقة') || (t._domPL!==undefined && String(t.status||'').includes('مغلقة')));
     let pnl=0,wins=0,losses=0,grossWin=0,grossLoss=0,best=null,worst=null;
     closed.forEach(t=>{
       const q=n(t.shares), buy=n(t.buyPrice), sell=n(t.sellPrice), fee=n(t.fee);
-      if(q<=0||buy<=0||sell<=0)return;
-      const p=q*(sell-buy)-fee;
+      let p=n(t._domPL);
+      if(t._domPL===undefined){
+        if(q<=0||buy<=0||sell<=0)return;
+        p=q*(sell-buy)-fee;
+      }
       pnl+=p;
       if(p>0){wins++;grossWin+=p}else if(p<0){losses++;grossLoss+=Math.abs(p)}
       if(!best||p>best.p)best={p,t}; if(!worst||p<worst.p)worst={p,t};
@@ -2332,7 +2376,7 @@ document.addEventListener('DOMContentLoaded',()=>{document.getElementById('shari
     const map=new Map();
     tx.forEach(t=>{
       const s=String(t.ticker||'').trim().toUpperCase(),q=n(t.shares),b=n(t.buyPrice),x=n(t.sellPrice);
-      if(!s||q<=0||b<=0||x>0)return;
+      if(!s||q<=0||b<=0||x>0||String(t.status||'').includes('مغلقة'))return;
       const a=map.get(s)||{q:0,cost:0};a.q+=q;a.cost+=q*b;map.set(s,a);
     });
     const arr=[...map.entries()].sort((a,b)=>b[1].cost-a[1].cost);
@@ -2357,8 +2401,33 @@ document.addEventListener('DOMContentLoaded',()=>{document.getElementById('shari
     if(typeof original==='function') original(tab);
     if(tab==='analytics') setTimeout(run,50);
   };
-  window.addEventListener('load',()=>setTimeout(run,500));
+  window.addEventListener('load',()=>setTimeout(run,700));
+  // Keep analytics synchronized with Firebase/localStorage rendering.
+  // The transaction table is the final visible source of truth if the
+  // authenticated cloud listener finishes after page initialization.
+  let analyticsPoll=null;
+  function startAnalyticsPoll(){
+    if(analyticsPoll) clearInterval(analyticsPoll);
+    analyticsPoll=setInterval(()=>{
+      const view=document.getElementById('view-analytics');
+      if(view && !view.classList.contains('hidden')) run();
+    },800);
+  }
+  startAnalyticsPoll();
 })();
+</script>
+<script id="portfolio-analytics-dom-sync">
+document.addEventListener('DOMContentLoaded', function(){
+  const body=document.getElementById('transactions-table-body');
+  if(!body) return;
+  const obs=new MutationObserver(function(){
+    if(typeof window.refreshPortfolioAnalytics==='function'){
+      const view=document.getElementById('view-analytics');
+      if(view && !view.classList.contains('hidden')) window.refreshPortfolioAnalytics();
+    }
+  });
+  obs.observe(body,{childList:true,subtree:true});
+});
 </script>
 <script id="portfolio-analytics-init-fix">
 document.addEventListener('DOMContentLoaded', function(){
