@@ -566,7 +566,9 @@ body { min-width: 0 !important; overflow-x: hidden; }
                         <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
                             <tr>
                                 <th class="p-3">#</th>
-                                <th class="p-3">التاريخ</th>
+                                <th class="p-3">من</th>
+                                <th class="p-3">إلى</th>
+                                <th class="p-3">مدة الصفقة</th>
                                 <th class="p-3">تيكر السهم</th>
                                 <th class="p-3">نوع العملية</th>
                                 <th class="p-3">العدد</th>
@@ -818,6 +820,14 @@ body { min-width: 0 !important; overflow-x: hidden; }
                             <option value="مفتوحة">مفتوحة</option>
                             <option value="مغلقة">مغلقة</option>
                         </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3" id="tx-sell-date-wrap">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">تاريخ الإغلاق / البيع</label>
+                        <input type="date" id="tx-sell-date" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                        <p class="text-[10px] text-slate-400 mt-1">يُستخدم لحساب مدة الاحتفاظ بالصفقة.</p>
                     </div>
                 </div>
 
@@ -1628,13 +1638,43 @@ body { min-width: 0 !important; overflow-x: hidden; }
             renderCharts();
         }
 
+        function formatTradeDate(value) {
+            if (!value) return '—';
+            const d = new Date(String(value) + 'T00:00:00');
+            if (Number.isNaN(d.getTime())) return value;
+            return d.toLocaleDateString('ar-EG', { year: 'numeric', month: '2-digit', day: '2-digit' });
+        }
+
+        function calculateHoldingPeriod(startDate, endDate, isOpen = false) {
+            if (!startDate) return { days: null, end: null };
+            const start = new Date(String(startDate) + 'T00:00:00');
+            let end;
+            if (endDate) end = new Date(String(endDate) + 'T00:00:00');
+            else if (isOpen) {
+                const now = new Date();
+                end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            } else return { days: null, end: null };
+            if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return { days: null, end: null };
+            const days = Math.max(0, Math.round((end - start) / 86400000));
+            return { days, end };
+        }
+
+        function formatHoldingDays(days) {
+            if (days == null) return '—';
+            if (days === 0) return 'نفس اليوم';
+            if (days === 1) return 'يوم واحد';
+            if (days === 2) return 'يومان';
+            if (days >= 3 && days <= 10) return `${days} أيام`;
+            return `${days} يوم`;
+        }
+
         function renderTransactionsTable() {
             const tbody = document.getElementById('transactions-table-body');
             if (!tbody) return;
             tbody.innerHTML = '';
 
             if (filteredTransactions.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="13" class="text-center p-8 text-slate-400 font-medium">لا توجد صفقات مسجلة حالياً. اضغط على "<span class="text-emerald-600 font-bold">+ إضافة صفقة جديدة</span>" لإضافة أولى صفقاتك!</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="15" class="text-center p-8 text-slate-400 font-medium">لا توجد صفقات مسجلة حالياً. اضغط على "<span class="text-emerald-600 font-bold">+ إضافة صفقة جديدة</span>" لإضافة أولى صفقاتك!</td></tr>`;
                 return;
             }
 
@@ -1644,11 +1684,14 @@ body { min-width: 0 !important; overflow-x: hidden; }
                 const shownPrice = t.type === 'بيع' ? sellPrice : buyPrice;
                 const priceLabel = t.type === 'بيع' ? `شراء ${buyPrice.toFixed(2)} / بيع ${sellPrice.toFixed(2)}` : buyPrice.toFixed(2);
 
+                const holding = calculateHoldingPeriod(t.date, t.sellDate, t.status === 'مفتوحة');
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50 transition-colors border-b border-slate-100";
                 tr.innerHTML = `
                     <td class="p-3 font-semibold text-slate-500">${index + 1}</td>
-                    <td class="p-3 whitespace-nowrap text-xs">${t.date}</td>
+                    <td class="p-3 whitespace-nowrap text-xs">${formatTradeDate(t.date)}</td>
+                    <td class="p-3 whitespace-nowrap text-xs">${t.sellDate ? formatTradeDate(t.sellDate) : (t.status === 'مفتوحة' ? 'مستمرة' : '—')}</td>
+                    <td class="p-3 whitespace-nowrap text-xs font-bold">${formatHoldingDays(holding.days)}</td>
                     <td class="p-3 font-extrabold text-slate-800">${t.ticker}</td>
                     <td class="p-3"><span class="px-2 py-0.5 rounded text-xs font-bold ${t.type === 'شراء' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}">${t.type}</span></td>
                     <td class="p-3 font-semibold">${Number(t.shares).toLocaleString()}</td>
@@ -2174,6 +2217,16 @@ body { min-width: 0 !important; overflow-x: hidden; }
         }
 
         document.getElementById('tx-type')?.addEventListener('change', updateTransactionPriceFields);
+        function updateSellDateField() {
+            const status = document.getElementById('tx-status')?.value;
+            const wrap = document.getElementById('tx-sell-date-wrap');
+            const input = document.getElementById('tx-sell-date');
+            if (!wrap || !input) return;
+            const closed = status === 'مغلقة';
+            wrap.classList.toggle('hidden', !closed);
+            input.required = closed;
+        }
+        document.getElementById('tx-status')?.addEventListener('change', updateSellDateField);
         let tickerPriceDebounce = null;
         document.getElementById('tx-ticker')?.addEventListener('input', () => {
             const input = document.getElementById('tx-ticker');
@@ -2197,7 +2250,9 @@ body { min-width: 0 !important; overflow-x: hidden; }
             document.getElementById('tx-id').value = "";
             document.getElementById('tx-form').reset();
             document.getElementById('tx-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('tx-sell-date').value = '';
             updateTransactionPriceFields();
+            updateSellDateField();
             document.getElementById('transaction-modal').classList.remove('hidden');
             document.getElementById('transaction-modal').classList.add('flex');
             document.getElementById('tx-ticker')?.focus();
@@ -2210,6 +2265,7 @@ body { min-width: 0 !important; overflow-x: hidden; }
             document.getElementById('modal-title').innerText = "تعديل بيانات الصفقة";
             document.getElementById('tx-id').value = tx.id;
             document.getElementById('tx-date').value = tx.date;
+            document.getElementById('tx-sell-date').value = tx.sellDate || '';
             document.getElementById('tx-ticker').value = tx.ticker;
             document.getElementById('tx-type').value = tx.type;
             document.getElementById('tx-status').value = tx.status;
@@ -2219,6 +2275,7 @@ body { min-width: 0 !important; overflow-x: hidden; }
             document.getElementById('tx-fee').value = tx.fee ?? 0;
             document.getElementById('tx-current-price').value = tx.currentPrice || "";
             updateTransactionPriceFields();
+            updateSellDateField();
 
             document.getElementById('transaction-modal').classList.remove('hidden');
             document.getElementById('transaction-modal').classList.add('flex');
@@ -2239,6 +2296,7 @@ body { min-width: 0 !important; overflow-x: hidden; }
             const newTx = {
                 id: id,
                 date: document.getElementById('tx-date').value,
+                sellDate: document.getElementById('tx-sell-date').value || null,
                 ticker: document.getElementById('tx-ticker').value.toUpperCase().trim(),
                 type: type,
                 status: document.getElementById('tx-status').value,
@@ -2257,6 +2315,14 @@ body { min-width: 0 !important; overflow-x: hidden; }
             }
             if (type === 'بيع' && (!Number.isFinite(sellPriceValue) || sellPriceValue <= 0)) {
                 showToast('اكتب سعر البيع بشكل صحيح.');
+                return;
+            }
+            if (newTx.status === 'مغلقة' && !newTx.sellDate) {
+                showToast('اكتب تاريخ الإغلاق / البيع للصفقة المغلقة.');
+                return;
+            }
+            if (newTx.sellDate && new Date(newTx.sellDate) < new Date(newTx.date)) {
+                showToast('تاريخ الإغلاق لا يمكن أن يكون قبل تاريخ بداية الصفقة.');
                 return;
             }
             // A live market price is helpful for open BUY positions, but it must not
@@ -2729,8 +2795,8 @@ document.addEventListener('DOMContentLoaded',()=>{document.getElementById('shari
   window.refreshPortfolioAnalytics=run;
   window.exportPortfolioAnalytics=function(){
     const tx=getTransactions();
-    const rows=[['Ticker','Shares','Buy Price','Sell Price','Fee','P/L']];
-    tx.forEach(t=>rows.push([t.ticker,t.shares,t.buyPrice,t.sellPrice||'',t.fee||'',t.sellPrice?((n(t.shares)*n(t.sellPrice))-(n(t.shares)*n(t.buyPrice))-n(t.fee)):'' ]));
+    const rows=[['Ticker','Start Date','End Date','Holding Days','Shares','Buy Price','Sell Price','Fee','P/L']];
+    tx.forEach(t=>{ const h=calculateHoldingPeriod(t.date,t.sellDate,t.status==='مفتوحة'); rows.push([t.ticker,t.date||'',t.sellDate||'',h.days??'',t.shares,t.buyPrice,t.sellPrice||'',t.fee||'',t.sellPrice?((n(t.shares)*n(t.sellPrice))-(n(t.shares)*n(t.buyPrice))-n(t.fee)):'' ]); });
     const csv='\uFEFF'+rows.map(r=>r.map(v=>`"${String(v??'').replaceAll('"','""')}"`).join(',')).join('\n');
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='StockPulse_Portfolio_Analysis.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   };
