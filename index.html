@@ -2216,18 +2216,24 @@ body { min-width: 0 !important; overflow-x: hidden; }
             updateBuyProfitPreview();
         }
 
-        document.getElementById('tx-type')?.addEventListener('change', updateTransactionPriceFields);
+        document.getElementById('tx-type')?.addEventListener('change', () => {
+            updateTransactionPriceFields();
+            updateSellDateField();
+        });
         function updateSellDateField() {
-            const status = document.getElementById('tx-status')?.value;
+            const type = document.getElementById('tx-type')?.value;
             const wrap = document.getElementById('tx-sell-date-wrap');
             const input = document.getElementById('tx-sell-date');
             if (!wrap || !input) return;
-            // Keep the field visible in both Add and Edit modes.
-            // It is required only when the transaction is marked as closed.
-            wrap.classList.remove('hidden');
-            input.required = status === 'مغلقة';
+
+            // تاريخ الإغلاق / البيع يظهر فقط عندما تكون العملية "بيع".
+            // في الشراء لا نعرض الحقل ولا نجعله مطلوباً.
+            const isSell = type === 'بيع';
+            wrap.classList.toggle('hidden', !isSell);
+            input.required = isSell;
         }
         document.getElementById('tx-status')?.addEventListener('change', updateSellDateField);
+        updateSellDateField();
         let tickerPriceDebounce = null;
         document.getElementById('tx-ticker')?.addEventListener('input', () => {
             const input = document.getElementById('tx-ticker');
