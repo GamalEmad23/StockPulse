@@ -2147,6 +2147,7 @@
                 flushPendingSyncQueue();
             }
         });
+        
 
         window.addEventListener('offline', () => {
             updateSyncBadge(`💾 وضع الأوفلاين (${pendingSyncQueue.length} محفوظ محلياً)`, "amber");
