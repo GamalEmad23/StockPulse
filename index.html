@@ -373,6 +373,29 @@ body { min-width: 0 !important; overflow-x: hidden; }
 }
 </style>
 
+<style id="stockpulse-investor-tools-css">
+.sp-tool-card{transition:transform .18s ease,box-shadow .18s ease}
+.sp-tool-card:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(15,23,42,.06)}
+.sp-count-badge{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;background:#ecfdf5;color:#047857;font-size:11px;font-weight:900}
+.sp-tool-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #e2e8f0;background:#f8fafc;border-radius:12px}
+.sp-tool-row:hover{border-color:#cbd5e1}
+.sp-shortcut{min-height:78px;border:1px solid #e2e8f0;background:#f8fafc;border-radius:14px;padding:12px;font-weight:900;color:#0f172a;transition:.18s}
+.sp-shortcut:hover{border-color:#10b981;background:#ecfdf5;transform:translateY(-1px)}
+.sp-shortcut span{display:block;margin-top:4px;font-size:10px;color:#94a3b8;font-weight:700;direction:ltr}
+html[data-theme="dark"] .sp-tool-card{background:#1a2433!important;border-color:#334155!important}
+html[data-theme="dark"] .sp-tool-row,html[data-theme="dark"] .sp-shortcut{background:#182235!important;border-color:#334155!important;color:#f8fafc!important}
+html[data-theme="dark"] .sp-shortcut:hover{background:#18352d!important;border-color:#397e69!important}
+html[data-theme="dark"] .sp-count-badge{background:#18352d;color:#6ee7b7}
+html[data-theme="dark"] #view-tools .bg-slate-50{background:#182235!important}
+html[data-theme="dark"] #view-tools .bg-amber-50{background:#38301f!important;border-color:#66582f!important;color:#fcd34d!important}
+html[data-theme="dark"] #view-tools .bg-blue-50{background:#1b2d42!important;border-color:#334b68!important}
+@media(max-width:767px){
+  #view-tools .grid{min-width:0}
+  .sp-tool-card{padding:14px!important}
+  .sp-tool-row{align-items:flex-start}
+  .sp-shortcut{min-height:70px;font-size:12px}
+}
+</style>
 </head>
 <body class="bg-slate-50 min-h-screen flex flex-col justify-between">
     <!-- Firebase Email/Password Authentication -->
@@ -429,6 +452,7 @@ body { min-width: 0 !important; overflow-x: hidden; }
                     <button onclick="switchTab('transactions')" id="tab-transactions" class="tab-btn px-3 py-2 transition-colors text-slate-400 hover:text-white">سجل الصفقات</button>
                     <button onclick="switchTab('wacc')" id="tab-wacc" class="tab-btn px-3 py-2 transition-colors text-slate-400 hover:text-white">حاسبة متوسط التكلفة</button>
                     <button onclick="switchTab('analytics')" id="tab-analytics" class="tab-btn px-3 py-2 transition-colors text-slate-400 hover:text-white">تحليل المحفظة</button>
+                    <button onclick="switchTab('tools')" id="tab-tools" class="tab-btn px-3 py-2 transition-colors text-slate-400 hover:text-white">أدوات المستثمر</button>
                     <button onclick="switchTab('sharia')" id="tab-sharia" class="tab-btn px-3 py-2 transition-colors text-slate-400 hover:text-white">الأسهم المتوافقة مع الشريعة</button>
                     <button onclick="switchTab('guide')" id="tab-guide" class="tab-btn px-3 py-2 transition-colors text-slate-400 hover:text-white">دليل Excel</button>
                 </nav>
@@ -701,6 +725,97 @@ body { min-width: 0 !important; overflow-x: hidden; }
             <b class="text-slate-900">مهم:</b> Musaffa تعرض حاليًا مجموعة مصرية بها <b>68 سهمًا</b>، لكن تفاصيل الـ68 ليست مكشوفة بالكامل في الصفحة العامة. لذلك أضفت هنا <b>21 سهمًا موثقًا علنًا من مصادر Musaffa نفسها</b> (20 سهمًا من Musaffa Academy + مصر للألومنيوم الظاهرة في المجموعة الحالية)، مع الحفاظ على زر فتح القائمة الأصلية للرجوع إلى الـ68.
           </div>
         </section>
+        <!-- SECTION 5: INVESTOR TOOLS -->
+        <section id="view-tools" class="space-y-6 hidden" dir="rtl">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div>
+                        <div class="text-xs font-black text-emerald-600 mb-1">INVESTOR TOOLKIT</div>
+                        <h2 class="text-2xl font-black text-slate-900">أدوات المستثمر</h2>
+                        <p class="text-sm text-slate-500 mt-1 leading-7">أدوات عملية لمتابعة الأسهم، حفظ قائمة المراقبة، إنشاء تنبيهات سعرية، والاحتفاظ بنسخة احتياطية من بياناتك.</p>
+                    </div>
+                    <button onclick="spRefreshAllTools()" class="px-4 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 transition">↻ تحديث الأدوات</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                <!-- Watchlist -->
+                <div class="sp-tool-card bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+                    <div class="flex items-center justify-between gap-3 mb-4">
+                        <div>
+                            <h3 class="font-black text-slate-900 text-lg">قائمة المراقبة</h3>
+                            <p class="text-xs text-slate-500 mt-1">احتفظ بالأسهم التي تتابعها بدون إضافتها إلى المحفظة.</p>
+                        </div>
+                        <span id="sp-watch-count" class="sp-count-badge">0 سهم</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
+                        <input id="sp-watch-ticker" type="text" dir="ltr" placeholder="COMI" class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm uppercase outline-none focus:border-emerald-500">
+                        <input id="sp-watch-name" type="text" placeholder="اسم الشركة (اختياري)" class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-emerald-500">
+                        <button onclick="spAddWatchlist()" class="px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-700">+ إضافة</button>
+                    </div>
+                    <div id="sp-watch-list" class="mt-4 space-y-2"></div>
+                </div>
+
+                <!-- Price Alerts -->
+                <div class="sp-tool-card bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+                    <div class="flex items-center justify-between gap-3 mb-4">
+                        <div>
+                            <h3 class="font-black text-slate-900 text-lg">Price Alerts — تنبيهات السعر</h3>
+                            <p class="text-xs text-slate-500 mt-1">تنبيه عند وصول السهم إلى السعر الذي تحدده أثناء فتح الموقع.</p>
+                        </div>
+                        <button onclick="spRefreshAlerts()" class="px-3 py-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold">فحص الأسعار</button>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <input id="sp-alert-ticker" type="text" dir="ltr" placeholder="COMI" class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm uppercase outline-none focus:border-emerald-500">
+                        <select id="sp-alert-condition" class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm outline-none">
+                            <option value="above">فوق</option><option value="below">تحت</option>
+                        </select>
+                        <input id="sp-alert-target" type="number" min="0.0001" step="0.0001" placeholder="السعر المستهدف" class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-emerald-500">
+                        <button onclick="spAddAlert()" class="px-3 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-700">+ تنبيه</button>
+                    </div>
+                    <div id="sp-alert-list" class="mt-4 space-y-2"></div>
+                </div>
+
+                <!-- Import / Backup -->
+                <div class="sp-tool-card bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+                    <div class="flex items-center justify-between gap-3 mb-4">
+                        <div>
+                            <h3 class="font-black text-slate-900 text-lg">Import / Backup</h3>
+                            <p class="text-xs text-slate-500 mt-1">نسخة JSON كاملة من الصفقات والإعدادات وقائمة المراقبة والتنبيهات.</p>
+                        </div>
+                        <span class="text-xs font-bold text-slate-400">نسخة محلية</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button onclick="spExportBackup()" class="px-4 py-3 rounded-xl bg-slate-900 text-white font-bold text-sm hover:bg-slate-800">⬇ تصدير نسخة احتياطية</button>
+                        <label class="px-4 py-3 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 font-bold text-sm text-center cursor-pointer hover:bg-blue-100">
+                            ⬆ استيراد نسخة احتياطية
+                            <input id="sp-import-file" type="file" accept="application/json,.json" class="hidden" onchange="spImportBackup(event)">
+                        </label>
+                    </div>
+                    <div class="mt-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs leading-6 p-3">
+                        <b>مهم:</b> الاستيراد يحدّث بيانات هذا الحساب على الجهاز الحالي. لا تحذف ملف النسخة الاحتياطية قبل التأكد من نجاح الاستيراد.
+                    </div>
+                </div>
+
+                <!-- Quick shortcuts / mobile -->
+                <div class="sp-tool-card bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+                    <div class="mb-4">
+                        <h3 class="font-black text-slate-900 text-lg">اختصارات سريعة</h3>
+                        <p class="text-xs text-slate-500 mt-1">الوصول للأجزاء المهمة من الموقع بدون البحث في القوائم.</p>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <button onclick="switchTab('dashboard')" class="sp-shortcut">لوحة المحفظة<span>Dashboard</span></button>
+                        <button onclick="switchTab('transactions')" class="sp-shortcut">إضافة صفقة<span>Transactions</span></button>
+                        <button onclick="switchTab('analytics')" class="sp-shortcut">تحليل المحفظة<span>Analytics</span></button>
+                        <button onclick="switchTab('sharia')" class="sp-shortcut">الفحص الشرعي<span>Shariah</span></button>
+                    </div>
+                    <div class="mt-4 rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs text-slate-500 leading-6">
+                        <b class="text-slate-700">Mobile Cards:</b> على الهاتف تتحول الأدوات إلى بطاقات بعناصر كبيرة قابلة للمس، بينما يظل سجل الصفقات قابلًا للتمرير أفقيًا حتى لا تتكسر البيانات.
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- SECTION 4: EXCEL GUIDE & ARCHITECTURE -->
         
     <section id="view-analytics" class="hidden space-y-5">
@@ -1018,7 +1133,7 @@ body { min-width: 0 !important; overflow-x: hidden; }
 
         // Immediately attach window functions so HTML inline onclick events work without delay
         window.switchTab = function switchTab(tabName) {
-            const tabs = ['dashboard', 'transactions', 'wacc', 'analytics', 'sharia', 'guide'];
+            const tabs = ['dashboard', 'transactions', 'wacc', 'analytics', 'tools', 'sharia', 'guide'];
             tabs.forEach(t => {
                 const view = document.getElementById(`view-${t}`);
                 const btn = document.getElementById(`tab-${t}`);
@@ -2869,6 +2984,89 @@ document.addEventListener('DOMContentLoaded', function(){
     let theme='light';
     try { theme=localStorage.getItem('stockpulse_theme') || 'light'; } catch(e) {}
     applyTheme(theme);
+  });
+})();
+</script>
+<script id="stockpulse-investor-tools-js">
+(function(){
+  function userKey(){
+    try { return (typeof userId!=='undefined' && userId) ? userId : (localStorage.getItem('stock_dashboard_active_user_id')||'guest'); } catch(e){ return 'guest'; }
+  }
+  function key(name){ return `stockpulse_${name}_${userKey()}`; }
+  function read(name,fallback){ try { const v=JSON.parse(localStorage.getItem(key(name))||'null'); return v==null?fallback:v; } catch(e){ return fallback; } }
+  function write(name,value){ try { localStorage.setItem(key(name),JSON.stringify(value)); } catch(e){} }
+  function esc(v){ return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function num(v){ const n=Number(v); return Number.isFinite(n)?n:0; }
+  function fmt(v){ return num(v).toLocaleString('en-US',{maximumFractionDigits:4}); }
+  function cached(ticker){ try { const x=JSON.parse(localStorage.getItem(`stockpulse_market_${String(ticker).trim().toUpperCase().replace(/\.CA$/,'')}`)||'null'); return x&&num(x.price)>0?num(x.price):null; }catch(e){return null;} }
+
+  function watch(){return read('watchlist',[])}
+  function alerts(){return read('price_alerts',[])}
+
+  function renderWatch(){
+    const list=document.getElementById('sp-watch-list'), count=document.getElementById('sp-watch-count');
+    if(!list)return;
+    const data=watch(); if(count)count.textContent=`${data.length} سهم`;
+    list.innerHTML=data.length?data.map((x,i)=>{
+      const p=cached(x.ticker);
+      return `<div class="sp-tool-row"><div><b dir="ltr">${esc(x.ticker)}</b><span class="text-xs text-slate-500 mr-2">${esc(x.name||'')}</span>${p?`<div class="text-xs text-emerald-600 font-black mt-1">السعر: ${fmt(p)}</div>`:'<div class="text-[11px] text-slate-400 mt-1">السعر: —</div>'}</div><div class="flex gap-2"><button onclick="spRefreshWatchPrice(${i})" class="text-xs px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-700">تحديث</button><button onclick="spRemoveWatch(${i})" class="text-xs px-2.5 py-1.5 rounded-lg bg-rose-50 text-rose-700">حذف</button></div></div>`;
+    }).join(''):'<div class="text-sm text-slate-400 text-center py-5">قائمة المراقبة فارغة — أضف أول سهم تتابعه.</div>';
+  }
+
+  function renderAlerts(){
+    const list=document.getElementById('sp-alert-list'); if(!list)return;
+    const data=alerts();
+    list.innerHTML=data.length?data.map((x,i)=>{
+      const p=cached(x.ticker), condition=x.condition==='above'?'فوق':'تحت';
+      const hit=p&&((x.condition==='above'&&p>=x.target)||(x.condition==='below'&&p<=x.target));
+      return `<div class="sp-tool-row"><div><b dir="ltr">${esc(x.ticker)}</b><span class="text-xs text-slate-500 mr-2">${condition} ${fmt(x.target)}</span><div class="text-xs mt-1 ${hit?'text-emerald-600 font-black':'text-slate-400'}">السعر الحالي: ${p?fmt(p):'—'} ${hit?'• تحقق الشرط ✓':''}</div></div><div class="flex gap-2"><button onclick="spRefreshAlert(${i})" class="text-xs px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-700">فحص</button><button onclick="spRemoveAlert(${i})" class="text-xs px-2.5 py-1.5 rounded-lg bg-rose-50 text-rose-700">حذف</button></div></div>`;
+    }).join(''):'<div class="text-sm text-slate-400 text-center py-5">لا توجد تنبيهات سعرية.</div>';
+  }
+
+  window.spAddWatchlist=function(){
+    const t=(document.getElementById('sp-watch-ticker')?.value||'').trim().toUpperCase();
+    const n=(document.getElementById('sp-watch-name')?.value||'').trim();
+    if(!t){ if(typeof showToast==='function')showToast('اكتب رمز السهم أولاً.'); return; }
+    const data=watch(); if(data.some(x=>x.ticker===t)){ if(typeof showToast==='function')showToast('السهم موجود بالفعل في قائمة المراقبة.'); return; }
+    data.push({ticker:t,name:n,createdAt:Date.now()}); write('watchlist',data);
+    document.getElementById('sp-watch-ticker').value=''; document.getElementById('sp-watch-name').value=''; renderWatch();
+  };
+  window.spRemoveWatch=function(i){const d=watch();d.splice(i,1);write('watchlist',d);renderWatch();};
+  window.spRefreshWatchPrice=async function(i){const d=watch(),x=d[i];if(!x)return;const p=await (typeof fetchCurrentMarketPrice==='function'?fetchCurrentMarketPrice(x.ticker):Promise.resolve(cached(x.ticker)));renderWatch();if(typeof showToast==='function')showToast(p?`تم تحديث ${x.ticker}: ${fmt(p)}`:`تعذر جلب سعر ${x.ticker}.`);};
+
+  window.spAddAlert=function(){
+    const t=(document.getElementById('sp-alert-ticker')?.value||'').trim().toUpperCase(), c=document.getElementById('sp-alert-condition')?.value||'above', target=num(document.getElementById('sp-alert-target')?.value);
+    if(!t||target<=0){if(typeof showToast==='function')showToast('اكتب الرمز والسعر المستهدف بشكل صحيح.');return;}
+    const d=alerts();d.push({ticker:t,condition:c,target,createdAt:Date.now()});write('price_alerts',d);
+    document.getElementById('sp-alert-ticker').value='';document.getElementById('sp-alert-target').value='';renderAlerts();
+  };
+  window.spRemoveAlert=function(i){const d=alerts();d.splice(i,1);write('price_alerts',d);renderAlerts();};
+  window.spRefreshAlert=async function(i){const d=alerts(),x=d[i];if(!x)return;const p=await (typeof fetchCurrentMarketPrice==='function'?fetchCurrentMarketPrice(x.ticker):Promise.resolve(cached(x.ticker)));renderAlerts();if(p){const hit=x.condition==='above'?p>=x.target:p<=x.target;if(hit&&typeof showToast==='function')showToast(`تنبيه ${x.ticker}: وصل إلى ${fmt(p)} ${x.condition==='above'?'(فوق)':'(تحت)'} الهدف.`);}else if(typeof showToast==='function')showToast(`تعذر جلب سعر ${x.ticker}.`);};
+  window.spRefreshAlerts=async function(){const d=alerts();if(!d.length){if(typeof showToast==='function')showToast('لا توجد تنبيهات لفحصها.');return;}for(let i=0;i<d.length;i++){await window.spRefreshAlert(i);}renderAlerts();};
+  window.spRefreshAllTools=function(){renderWatch();renderAlerts();if(typeof showToast==='function')showToast('تم تحديث أدوات المستثمر.');};
+
+  window.spExportBackup=function(){
+    const payload={version:1,app:'StockPulse',exportedAt:new Date().toISOString(),userId:userKey(),transactions:(typeof window.getPortfolioTransactions==='function'?window.getPortfolioTransactions():[]),settings:{depositedCapital:typeof depositedCapital!=='undefined'?depositedCapital:0,availableCash:typeof availableCash!=='undefined'?availableCash:0},watchlist:watch(),priceAlerts:alerts()};
+    const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`StockPulse_Backup_${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);if(typeof showToast==='function')showToast('تم تصدير النسخة الاحتياطية بنجاح.');
+  };
+  window.spImportBackup=function(e){
+    const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=function(){try{const data=JSON.parse(reader.result);if(!data||data.app!=='StockPulse'||!Array.isArray(data.transactions))throw new Error('invalid');
+      // Replace the current local portfolio with the selected backup, then persist it through the existing app flow.
+      if(typeof transactions!=='undefined') transactions=data.transactions;
+      if(typeof depositedCapital!=='undefined') depositedCapital=num(data.settings?.depositedCapital);
+      if(typeof availableCash!=='undefined') availableCash=num(data.settings?.availableCash);
+      write('watchlist',Array.isArray(data.watchlist)?data.watchlist:[]);write('price_alerts',Array.isArray(data.priceAlerts)?data.priceAlerts:[]);
+      if(typeof saveToLocalStorage==='function')saveToLocalStorage();
+      if(typeof populateFilterOptions==='function')populateFilterOptions();if(typeof applyFilters==='function')applyFilters();if(typeof recalculateMetricsAndCharts==='function')recalculateMetricsAndCharts();renderWatch();renderAlerts();
+      if(typeof showToast==='function')showToast('تم استيراد النسخة الاحتياطية على هذا الجهاز.');
+    }catch(err){if(typeof showToast==='function')showToast('ملف النسخة الاحتياطية غير صالح.');}finally{e.target.value='';}};reader.readAsText(file);
+  };
+
+  document.addEventListener('DOMContentLoaded',function(){
+    renderWatch();renderAlerts();
+    const toolsBtn=document.getElementById('tab-tools');
+    if(toolsBtn)toolsBtn.addEventListener('click',()=>{setTimeout(()=>{renderWatch();renderAlerts();},0);});
+    setInterval(()=>{const view=document.getElementById('view-tools');if(view&&!view.classList.contains('hidden')&&alerts().length)spRefreshAlerts();},60000);
   });
 })();
 </script>
