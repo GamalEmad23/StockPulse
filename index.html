@@ -58,6 +58,13 @@
             font-weight: 700;
         }
     </style>
+
+<style id="sharia-final-css">
+.sharia-tab-btn{border:1px solid #cbd5e1;background:#f8fafc;padding:.55rem .8rem;border-radius:.75rem;font-weight:800;font-size:.75rem;color:#475569}
+.sharia-tab-btn.active{background:#166534;color:#fff;border-color:#166534}
+.dark .sharia-tab-btn{background:#1e293b;border-color:#334155;color:#cbd5e1}
+.dark .sharia-tab-btn.active{background:#16a34a;color:#fff}
+</style>
 </head>
 <body class="bg-slate-50 min-h-screen flex flex-col justify-between">
     <!-- Firebase Email/Password Authentication -->
@@ -321,41 +328,62 @@
         </section>
 
         <!-- SECTION 4: SHARIAH STOCKS VIEW -->
-        <section id="view-sharia" class="space-y-6 hidden">
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                <div class="flex flex-col lg:flex-row justify-between gap-4 items-start lg:items-center">
-                    <div>
-                        <h2 class="text-xl font-black text-slate-900">الأسهم المتوافقة مع الشريعة</h2>
-                        <p class="text-slate-600 text-sm mt-1">مكونات EGX 33 Shariah، مع نسبة التطهير المنشورة فقط عندما تتوفر بيانات مؤرخة من مصدر متخصص.</p>
-                    </div>
-                    <div class="flex flex-wrap gap-2 text-xs">
-                        <a href="https://beta.egx.com.eg/ar/market/indices/overview?index=EGX_SHARIAH" target="_blank" rel="noopener" class="px-3 py-2 rounded-lg bg-slate-900 text-white font-bold">المصدر الرسمي EGX</a>
-                        <a href="https://kasheif.com/articles/16" target="_blank" rel="noopener" class="px-3 py-2 rounded-lg bg-emerald-600 text-white font-bold">مصدر نسب التطهير</a>
-                    </div>
-                </div>
+        <section id="view-sharia" class="space-y-5 hidden" dir="rtl">
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <div class="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+              <div>
+                <div class="text-xs font-bold text-emerald-600 mb-1">SHARIAH STOCK SCREENER</div>
+                <h2 class="text-2xl font-black text-slate-900">الأسهم المتوافقة مع الشريعة</h2>
+                <p class="text-sm text-slate-500 mt-1 leading-7">قارن القوائم الشرعية من أكثر من مصدر، وابحث باسم الشركة بالعربي أو بالرمز الإنجليزي.</p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <a href="https://musaffa.com/list-details/egx-halal-stocks-list---egypt-658/" target="_blank" rel="noopener" class="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-sm">فتح قائمة Musaffa ↗</a>
+                <a href="https://beta.egx.com.eg/ar/market/indices/overview?index=EGX_SHARIAH" target="_blank" rel="noopener" class="px-4 py-2 rounded-xl bg-slate-900 text-white font-bold text-sm">EGX الرسمي ↗</a>
+              </div>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div class="bg-white rounded-xl border border-slate-200 p-4"><div class="text-xs text-slate-500">عدد المكونات</div><div id="sharia-count" class="text-2xl font-black text-slate-900 mt-1">34</div></div>
-                <div class="bg-white rounded-xl border border-slate-200 p-4"><div class="text-xs text-slate-500">نسب تطهير منشورة</div><div id="sharia-purified-count" class="text-2xl font-black text-emerald-600 mt-1">15</div></div>
-                <div class="bg-white rounded-xl border border-slate-200 p-4"><div class="text-xs text-slate-500">نسبة غير منشورة</div><div id="sharia-missing-count" class="text-2xl font-black text-amber-600 mt-1">19</div></div>
-            </div>
-            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                <div class="p-4 border-b border-slate-200 flex flex-col md:flex-row gap-3 justify-between">
-                    <input id="sharia-search" oninput="renderShariaStocks()" type="text" placeholder="ابحث باسم السهم أو الرمز..." class="w-full md:w-80 bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 outline-none">
-                    <select id="sharia-purity-filter" onchange="renderShariaStocks()" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2">
-                        <option value="all">كل الأسهم</option><option value="available">لها نسبة تطهير منشورة</option><option value="missing">نسبة التطهير غير منشورة</option>
-                    </select>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-right text-sm">
-                        <thead class="bg-slate-100 text-slate-700 font-bold"><tr><th class="p-3">#</th><th class="p-3">الرمز</th><th class="p-3">الشركة</th><th class="p-3">القطاع</th><th class="p-3">التوافق</th><th class="p-3">نسبة التطهير</th><th class="p-3">تاريخ البيانات</th><th class="p-3">المصدر</th></tr></thead>
-                        <tbody id="sharia-table-body" class="divide-y divide-slate-100"></tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-900"><b>تنبيه:</b> نسبة التطهير ليست ثابتة بالضرورة؛ تتغير مع القوائم المالية. لذلك لا يتم وضع 0% أو رقم تقديري للسهم الذي لا توجد له نسبة منشورة.</div>
-        </section>
+          </div>
 
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <button id="sharia-tab-musaffa" onclick="setShariaMode('musaffa')" class="sharia-tab text-right rounded-2xl border-2 border-emerald-500 bg-emerald-50 p-4">
+              <div class="text-xs text-slate-500">Shariah Screener</div><div class="font-black text-slate-900 mt-1">Musaffa</div><div class="text-emerald-600 font-black mt-1">21 سهم موثق علنًا</div><div class="text-xs text-slate-500 mt-1">68 سهم في المجموعة الأصلية</div>
+            </button>
+            <button id="sharia-tab-egx" onclick="setShariaMode('egx')" class="sharia-tab text-right rounded-2xl border-2 border-transparent bg-white p-4 shadow-sm">
+              <div class="text-xs text-slate-500">المصدر الرسمي</div><div class="font-black text-slate-900 mt-1">EGX 33 Shariah</div><div id="sharia-egx-count" class="text-blue-600 font-black mt-1">34 سهم</div>
+            </button>
+            <button id="sharia-tab-boubyan" onclick="setShariaMode('boubyan')" class="sharia-tab text-right rounded-2xl border-2 border-transparent bg-white p-4 shadow-sm">
+              <div class="text-xs text-slate-500">قائمة دورية</div><div class="font-black text-slate-900 mt-1">Boubyan Capital</div><div id="sharia-boubyan-count" class="text-purple-600 font-black mt-1">96 سهم</div>
+            </button>
+          </div>
+
+          <div id="sharia-note" class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 leading-7"></div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="bg-white rounded-2xl border border-slate-200 p-4"><div class="text-xs text-slate-500">المعروض</div><div id="sharia-count" class="text-2xl font-black text-slate-900 mt-1">—</div></div>
+            <div class="bg-white rounded-2xl border border-slate-200 p-4"><div class="text-xs text-slate-500">نِسب تطهير منشورة</div><div id="sharia-purity-count" class="text-2xl font-black text-emerald-600 mt-1">—</div></div>
+            <div class="bg-white rounded-2xl border border-slate-200 p-4"><div class="text-xs text-slate-500">متوسط النسب المنشورة</div><div id="sharia-purity-avg" class="text-2xl font-black text-blue-600 mt-1">—</div></div>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-slate-200 flex flex-col lg:flex-row gap-3 justify-between">
+              <input id="sharia-search-final" type="search" placeholder="ابحث باسم الشركة أو الرمز الإنجليزي..." class="w-full lg:w-96 bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 outline-none focus:border-emerald-500" autocomplete="off">
+              <select id="sharia-purity-filter-final" class="bg-slate-50 border border-slate-300 rounded-xl px-4 py-3">
+                <option value="all">كل الأسهم</option><option value="known">لها نسبة تطهير منشورة</option><option value="unknown">نسبة التطهير غير منشورة</option>
+              </select>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-right text-sm">
+                <thead class="bg-slate-100 text-slate-700 font-black"><tr>
+                  <th class="p-3">#</th><th class="p-3">الرمز</th><th class="p-3">اسم الشركة</th><th class="p-3">القطاع</th><th class="p-3">المصدر</th><th class="p-3">تقييم الشريعة</th><th class="p-3">نسبة التطهير</th>
+                </tr></thead>
+                <tbody id="sharia-body-final" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 leading-7">
+            <b class="text-slate-900">مهم:</b> Musaffa تعرض حاليًا مجموعة مصرية بها <b>68 سهمًا</b>، لكن تفاصيل الـ68 ليست مكشوفة بالكامل في الصفحة العامة. لذلك أضفت هنا <b>21 سهمًا موثقًا علنًا من مصادر Musaffa نفسها</b> (20 سهمًا من Musaffa Academy + مصر للألومنيوم الظاهرة في المجموعة الحالية)، مع الحفاظ على زر فتح القائمة الأصلية للرجوع إلى الـ68.
+          </div>
+        </section>
         <!-- SECTION 4: EXCEL GUIDE & ARCHITECTURE -->
         <section id="view-guide" class="space-y-6 hidden">
             <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
@@ -2020,20 +2048,75 @@
             if (document.getElementById('res-avg-price')) document.getElementById('res-avg-price').innerText = `${avgPrice.toFixed(2)} ج.م`;
         };
 
-        // SHARIAH DATA — EGX 33 constituents + dated published purification figures
+        // SHARIAH DATA — multiple independently published lists.
+        // Purification values are only shown where a dated published value is available.
         const shariaStocks = [
-          ['ISPH','ابن سينا فارما','الأدوية والرعاية الصحية',null,null],['AMOC','الإسكندرية للزيوت المعدنية','طاقة / بتروكيماويات',null,null],['ICFC','الدولية للأسمدة والكيماويات','أسمدة وكيماويات',null,null],['IFAP','الدولية للمنتجات الزراعية','زراعة / أسمدة',null,null],['OCDI','سوديك','عقارات',null,null],['RMDA','راميدا','الأدوية والرعاية الصحية',null,null],
-          ['ACGC','العربية لحليج الأقطان','منسوجات',1.37,'2025-09-30'],['ARCC','العربية للأسمنت','مواد بناء',2.02,'2026-06-30'],['ETRS','المصرية لخدمات النقل - إيجيترانس','نقل ولوجستيات',1.20,'2026-06-30'],['ETEL','المصرية للاتصالات','اتصالات وتكنولوجيا',0.20,'2026-03-30'],['MPCO','المنصورة للدواجن','أغذية ومشروبات',0.62,'2026-03-31'],['ORWE','النساجون الشرقيون للسجاد','منسوجات',1.87,'2026-06-30'],['MTIE','إم إم جروب للصناعة والتجارة العالمية','تجارة وتوكيلات',0.60,'2026-06-30'],['ORAS','أوراسكوم كونستراكشون PLC','إنشاءات',0.87,'2026-06-30'],
-          ['ORHD','أوراسكوم للتنمية مصر','عقارات',null,null],['EFIH','إي فاينانس للاستثمارات المالية والرقمية','تكنولوجيا مالية',null,null],['EFID','إيديتا للصناعات الغذائية','أغذية',null,null],['PHDC','بالم هيلز للتعمير','عقارات',null,null],['SAUD','مصرف أبوظبي الإسلامي - مصر','بنوك إسلامية',null,null],['FAITA','بنك فيصل الإسلامي المصري - دولار','بنوك إسلامية',null,null],['FAIT','بنك فيصل الإسلامي المصري - جنيه','بنوك إسلامية',null,null],['JUFO','جهينة للصناعات الغذائية','أغذية',null,null],['GOUR','جورميه إيجيبت','أغذية',null,null],
-          ['RACC','راية لخدمات مراكز الاتصالات','اتصالات وتكنولوجيا',2.00,'2026-06-30'],['SKPC','سيدي كرير للبتروكيماويات','بتروكيماويات',3.40,'2025-12-31'],['CLHO','كليوباترا للمستشفيات','رعاية صحية',null,null],['EGAS','غاز مصر','طاقة / مرافق',0.06,'2026-03-31'],['LCSW','ليسيكو مصر','مواد بناء',null,null],['TMGH','طلعت مصطفى القابضة','عقارات',null,null],['MASR','مدينة مصر للإسكان والتطوير','عقارات',null,null],['ATQA','مصر الوطنية للصلب - عتاقة','معادن',3.54,'2025-12-31'],['MCQE','مصر للأسمنت - قنا','مواد بناء',3.22,'2026-06-30'],['EGAL','مصر للألومنيوم','معادن',0.73,'2025-12-31'],['ADIB','مصرف أبوظبي الإسلامي - مصر','بنوك إسلامية',null,null]
+          ['ISPH','ابن سينا فارما'],['AMOC','الإسكندرية للزيوت المعدنية'],['ICFC','الدولية للأسمدة والكيماويات'],['IFAP','الدولية للمنتجات الزراعية'],['OCDI','سوديك'],['RMDA','راميدا'],
+          ['ACGC','العربية لحليج الأقطان'],['ARCC','العربية للأسمنت'],['ETRS','المصرية لخدمات النقل - إيجيترانس'],['ETEL','المصرية للاتصالات'],['MPCO','المنصورة للدواجن'],['ORWE','النساجون الشرقيون'],['MTIE','إم إم جروب'],['ORAS','أوراسكوم كونستراكشون'],
+          ['ORHD','أوراسكوم للتنمية مصر'],['EFIH','إي فاينانس'],['EFID','إيديتا'],['PHDC','بالم هيلز'],['SAUD','البركة مصر'],['FAITA','فيصل الإسلامي - دولار'],['FAIT','فيصل الإسلامي - جنيه'],['JUFO','جهينة'],['GOUR','جورميه'],
+          ['RACC','راية لخدمات مراكز الاتصالات'],['SKPC','سيدي كرير للبتروكيماويات'],['CLHO','كليوباترا للرعاية الصحية'],['EGAS','غاز مصر'],['LCSW','ليسيكو مصر'],['TMGH','طلعت مصطفى'],['MASR','مدينة مصر'],['ATQA','مصر الوطنية للصلب - عتاقة'],['MCQE','مصر للأسمنت - قنا'],['EGAL','مصر للألومنيوم'],['ADIB','مصرف أبوظبي الإسلامي - مصر']
         ];
-        function renderShariaStocks(){
-          const body=document.getElementById('sharia-table-body'); if(!body)return;
-          const q=(document.getElementById('sharia-search')?.value||'').trim().toLowerCase(); const f=document.getElementById('sharia-purity-filter')?.value||'all';
-          const rows=shariaStocks.filter(x=>{const t=x[0].toLowerCase(),n=x[1].toLowerCase(),sec=x[2].toLowerCase(); const m=!q||t.includes(q)||n.includes(q)||sec.includes(q); const mf=f==='all'||(f==='available'&&x[3]!==null)||(f==='missing'&&x[3]===null); return m&&mf;});
-          body.innerHTML=rows.map((x,i)=>`<tr class="hover:bg-slate-50"><td class="p-3 text-slate-400">${i+1}</td><td class="p-3 font-black">${x[0]}</td><td class="p-3 font-bold">${x[1]}</td><td class="p-3 text-slate-600">${x[2]}</td><td class="p-3"><span class="px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 font-bold">EGX 33</span></td><td class="p-3 font-black ${x[3]===null?'text-amber-600':''}">${x[3]===null?'غير منشورة':x[3].toFixed(2)+'%'}</td><td class="p-3 text-slate-500">${x[4]||'—'}</td><td class="p-3"><a href="https://kasheif.com/articles/16" target="_blank" rel="noopener" class="text-emerald-700 font-bold hover:underline">المصدر</a></td></tr>`).join('')||`<tr><td colspan="8" class="p-8 text-center text-slate-500">لا توجد نتائج</td></tr>`;
-          const a=shariaStocks.filter(x=>x[3]!==null).length; document.getElementById('sharia-count').textContent=shariaStocks.length; document.getElementById('sharia-purified-count').textContent=a; document.getElementById('sharia-missing-count').textContent=shariaStocks.length-a;
+        const egxPurification={"ACGC":[1.37,'2025-09-30'],"ARCC":[2.02,'2026-06-30'],"ETRS":[1.20,'2026-06-30'],"ETEL":[0.20,'2026-03-30'],"MPCO":[0.62,'2026-03-31'],"ORWE":[1.87,'2026-06-30'],"MTIE":[0.60,'2026-06-30'],"ORAS":[0.87,'2026-06-30'],"RACC":[2.00,'2026-06-30'],"SKPC":[3.40,'2025-12-31'],"EGAS":[0.06,'2026-03-31'],"ATQA":[3.54,'2025-12-31'],"MCQE":[3.22,'2026-06-30'],"EGAL":[0.73,'2025-12-31'],"ISPH":[0.01,'2025-12-31']};
+
+        // Officially published Boubyan Capital Egypt Q1-2026 list (96 names), issue date 08-06-2026.
+        const boubyanStocks = [
+          ['AALR','General Company for Land Reclamation Development and Reconstruction'],['ACGC','Arab Cotton Ginning'],['ACRO','Acrowmisr for Metallic Scaffoldings and Frameworks'],['ADIB','Abu Dhabi Islamic Bank Egypt'],['AIFI','Atlas for Investment & Food Industries'],['AITG','Assiut Islamic National Trade and Development'],['AIVCB','Al Arafa for Investment and Consultancies'],['ALUM','Arab Aluminum Company'],['AMER','Amer Group Holding'],['AMES','Alexandria Medical Services'],['AMIA','Arab Moltaka Investments Company'],['AMOC','Alexandria Mineral Oils'],['APPC','Advanced Pharmaceutical Packaging Company'],['APSW','Arab and Polvara Spinning and Weaving'],['ARCC','Arabian Cement Company'],['ARVA','Arab Valves'],['ASHC','Al Salam Holding EDRs'],['ATLC','AT Lease'],['ATQA','Misr National Steel - Ataka'],['AXPH','Alexandria Company for Pharmaceuticals and Chemical Industries'],['BIOC','GlaxoSmithKline'],['BTFH','Beltone Financial Holding'],['CAED','Cairo for Educational Affairs'],
+          ['CLHO','Cleopatra Hospital'],['COSG','Cairo Oils & Soap'],['CPCI','Kahira Pharmaceuticals and Chemical Industries'],['DAPH','Development and Engineering Consultants'],['DCRC','Delta for Construction and Rebuilding'],['DPKP','DBK Pharmaceutical'],['EALR','Arab Co for Land Reclamation'],['EFIC','Egyptian Financial & Industrial'],['EFID','Edita Food Industries'],['EGAL','Egypt Aluminum'],['EGAS','Egypt Gas'],['ELKA','Cairo for Housing and Development'],['ELNA','El Nasr for Manufacturing Agricultural Crops'],['EMRI','Emerald for Real Estate Investments'],['ETRS','Egyptian Transport and Commercial Services'],['FAIT','Faisal Islamic Bank of Egypt - EGP'],['FAITA','Faisal Islamic Bank of Egypt - USD'],['GGCC','Giza General Contracting and Real Estate Investment'],['GIHD','Islamic Gharbia for Developed Buildings'],['GMCI','GMC Group for Industrial Commercial and Financial Investment'],['GSSC','General Company for Silos and Storage'],['GTHE','Global Telecom Holding'],['IDHC','Integrated Diagnostics Holdings'],
+          ['IFAP','International Co for Agricultural Crops'],['INFI','Ismailia National Food Industries'],['IRON','Egyptian Iron and Steel'],['ISMA','Ismailia Misr Poultry'],['ISMQ','Iron & Steel for Mines & Quarries'],['JUFO','Juhayna Food Industries'],['KABO','El Nasr Clothing and Textiles'],['MAAL','Marseilia Egyptian Gulf Real Estate Investment'],['MBEG','MB for Engineering and Contracting'],['MASR','Madinet Masr for Housing and Development'],['MBSC','Misr Beni Suef Cement'],['MCQE','Misr Cement - Qena'],['MCRO','Macro Group Pharmaceutical'],['MEPA','Medical Packaging'],['MFPC','Misr Fertilizers Production - MOPCO'],['MICH','Misr Chemical Industries'],['MILS','North Cairo Flour Mills'],['MOED','Egyptian Modern Education Systems'],['MPCO','Mansoura Poultry'],['MTIE','MM Group for Industry and International Trade'],['NCEM','National Cement'],['NCGC','Nile Cotton Ginning'],['NDRL','National Drilling'],
+          ['NEDA','North Upper Egypt Development and Agricultural Production'],['NIPH','El Nile Company for Pharmaceuticals and Chemical Industries'],['NOAF','North Africa Company for Real Estate Investment'],['ORAS','Orascom Construction'],['PACH','Paints and Chemical Industries'],['PHDC','Palm Hills Development'],['PRDC','Pioneer Properties for Urban Development'],['RACC','Raya Contact Center'],['RMDA','Tenth of Ramadan for Pharmaceutical and Diagnostic Reagents'],['RREI','Arab Real Estate Investment'],['RUBX','Rubex for Plastic Manufacturing'],['SAUD','Al Baraka Bank Egypt'],['SCEM','Sinai Cement'],['SIPC','Sabaa International Company for Pharmaceutical & Chemical Industries'],['SMCS','Samcrete Egypt Engineers and Constructors'],['SMFR','Samad Misr - EGYFERT'],['SPIN','Alexandria Spinning & Weaving'],['SPMD','Speed Medical'],['SUCE','Suez Cement'],['SUGR','Delta Sugar'],['SVCE','South Valley Cement'],['SWDY','El Sewedy Electric'],['TALM','Taaleem Management Services'],['TRSI','Tenth of Ramadan Spinning Industries'],['VODE','Vodafone Egypt Telecommunications'],['WATP','Modern Waterproofing'],['ZEOT','Extracted Oil and Derivatives']
+        ];
+
+        // Musaffa currently exposes the collection size publicly (68), but only three rows are publicly visible without unlocking.
+        const musaffaVisible=[['EGAL','Egypt Aluminum'],['ADIB','Abu Dhabi Islamic Bank Egypt'],['EFID','Edita Food Industries']];
+        let shariaSource='egx';
+
+        function sourceRows(){
+          if(shariaSource==='egx') return shariaStocks.map(x=>[x[0],x[1],'EGX 33 Shariah']);
+          if(shariaSource==='boubyan') return boubyanStocks.map(x=>[x[0],x[1],'Boubyan Capital — Q1 2026']);
+          if(shariaSource==='musaffa') return musaffaVisible.map(x=>[x[0],x[1],'Musaffa (68 إجمالاً)']);
+          const map=new Map();
+          shariaStocks.forEach(x=>map.set(x[0],[x[0],x[1], 'EGX 33 Shariah']));
+          boubyanStocks.forEach(x=>{ if(map.has(x[0])) map.get(x[0])[2]='EGX 33 + Boubyan'; });
+          return [...map.values()].filter(x=>x[2].includes('+'));
         }
+        function setShariaSource(src){
+          shariaSource=src;
+          document.getElementById('sharia-search').value='';
+          document.getElementById('sharia-purity-filter').value='all';
+          const names={egx:'EGX 33',boubyan:'Boubyan Q1 2026',musaffa:'Musaffa',compare:'تقاطع EGX + Boubyan'};
+          document.getElementById('sharia-active-source').textContent=names[src];
+          const notes={
+            egx:'المصدر: البورصة المصرية. المؤشر الرسمي EGX33 Shariah أُطلق في يونيو 2024 ويضم الأسهم التي تستوفي ضوابط المؤشر والسيولة؛ لذلك هذه القائمة ليست بالضرورة كل سهم قد يمر باختبار شرعي مختلف.',
+            boubyan:'المصدر: Boubyan Capital — قائمة الشركات الإسلامية المتاح تداولها في البورصة المصرية للربع الأول 2026، إصدار 08/06/2026. المستند يذكر أنها معتمدة من هيئة الرقابة الشرعية لشركة بوبيان كابيتال. هذه قائمة زمنية وليست تحديثاً لحظياً.',
+            musaffa:'المصدر: Musaffa. الصفحة العامة تعرض قائمة EGX Halal Stocks وعددها 68، لكن البيانات العامة التي يمكن التحقق منها في الصفحة تعرض 3 أسهم فقط؛ لذلك لن أختلق الـ65 المتبقية.',
+            compare:'هنا يظهر فقط التقاطع الذي أمكن التحقق منه بين EGX33 الرسمي وقائمة Boubyan Q1 2026. التقاطع ليس حكماً شرعياً مستقلاً؛ هو مجرد أداة مقارنة.'
+          };
+          document.getElementById('sharia-source-note').textContent=notes[src];
+          renderShariaSource();
+        }
+        function renderShariaSource(){
+          const body=document.getElementById('sharia-table-body'); if(!body)return;
+          const q=(document.getElementById('sharia-search')?.value||'').trim().toLowerCase();
+          const f=document.getElementById('sharia-purity-filter')?.value||'all';
+          let rows=sourceRows().filter(x=>!q||x[0].toLowerCase().includes(q)||x[1].toLowerCase().includes(q));
+          rows=rows.filter(x=>{
+            const has=!!egxPurification[x[0]];
+            return f==='all'||(f==='available'&&has)||(f==='missing'&&!has);
+          });
+          body.innerHTML=rows.map((x,i)=>{
+            const pur=egxPurification[x[0]];
+            return `<tr class="hover:bg-slate-50"><td class="p-3 text-slate-400">${i+1}</td><td class="p-3 font-black">${x[0]}</td><td class="p-3 font-bold">${x[1]}</td><td class="p-3"><span class="px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 font-bold">${x[2]}</span></td><td class="p-3 font-black ${pur?'text-emerald-700':'text-amber-600'}">${pur?pur[0].toFixed(2)+'%':'غير منشورة'}</td><td class="p-3 text-slate-500">${pur?pur[1]:(shariaSource==='boubyan'?'2026-06-08':'—')}</td></tr>`;
+          }).join('')||`<tr><td colspan="6" class="p-8 text-center text-slate-500">لا توجد نتائج</td></tr>`;
+          document.getElementById('sharia-visible-count').textContent=`${rows.length} نتيجة`;
+          document.getElementById('src-egx-count').textContent=`${shariaStocks.length} سهم`;
+          document.getElementById('src-boubyan-count').textContent=`${boubyanStocks.length} سهم`;
+          document.getElementById('src-overlap-count').textContent=`${sourceRowsForOverlap().length} سهم مشترك`;
+        }
+        function sourceRowsForOverlap(){
+          const b=new Set(boubyanStocks.map(x=>x[0])); return shariaStocks.filter(x=>b.has(x[0]));
+        }
+        function renderShariaStocks(){ renderShariaSource(); }
+        setTimeout(()=>setShariaSource('egx'),0);
 
         // Network Status Listeners for seamless Offline -> Online Syncing
         window.addEventListener('online', () => {
@@ -2057,5 +2140,83 @@
             window.addWaccRow();
         });
     </script>
+
+<script id="sharia-final-js">
+(function(){
+const MUSaffa=[
+  ["ADIB","مصرف أبوظبي الإسلامي - مصر","بنوك إسلامية","Musaffa Academy — يوليو 2024","5/5"],
+  ["SAUD","بنك البركة مصر","بنوك إسلامية","Musaffa Academy — يوليو 2024","5/5"],
+  ["AMIA","عربية مولتياكا للاستثمارات","استثمارات","Musaffa Academy — يوليو 2024","5/5"],
+  ["ATLC","إيه تي ليس","خدمات مالية","Musaffa Academy — يوليو 2024","5/5"],
+  ["FAITA","فيصل الإسلامي - دولار","بنوك إسلامية","Musaffa Academy — يوليو 2024","5/5"],
+  ["AIFI","أطلس للاستثمار والصناعات الغذائية","أغذية واستثمارات","Musaffa Academy — يوليو 2024","5/5"],
+  ["CAED","القاهرة للتعليم","تعليم","Musaffa Academy — يوليو 2024","5/5"],
+  ["GIHD","الإسلامية الغربية للمساكن","عقارات","Musaffa Academy — يوليو 2024","5/5"],
+  ["MBSC","مصر بني سويف للأسمنت","مواد بناء","Musaffa Academy — يوليو 2024","4/5"],
+  ["AMES","الإسكندرية للخدمات الطبية","رعاية صحية","Musaffa Academy — يوليو 2024","4/5"],
+  ["DCRC","الدلتا للإنشاء والتعمير","عقارات","Musaffa Academy — يوليو 2024","4/5"],
+  ["ZEOT","الزيوت المستخلصة ومشتقاتها","أغذية","Musaffa Academy — يوليو 2024","4/5"],
+  ["MOSC","مصر للزيوت والصابون","أغذية","Musaffa Academy — يوليو 2024","4/5"],
+  ["CCRS","الخليج الكندي للاستثمار العقاري العربي","عقارات","Musaffa Academy — يوليو 2024","4/5"],
+  ["NDRL","الحفر الوطنية","طاقة وخدمات حفر","Musaffa Academy — يوليو 2024","4/5"],
+  ["CLHO","مستشفى كليوباترا","رعاية صحية","Musaffa Academy — يوليو 2024","3/5"],
+  ["MCRO","ماكرو جروب للأدوية","رعاية صحية","Musaffa Academy — يوليو 2024","3/5"],
+  ["AXPH","الإسكندرية للأدوية والصناعات الكيماوية","أدوية","Musaffa Academy — يوليو 2024","3/5"],
+  ["AJWA","أجواء للصناعات الغذائية","أغذية","Musaffa Academy — يوليو 2024","3/5"],
+  ["SPMD","سبيد ميديكال","رعاية صحية","Musaffa Academy — يوليو 2024","3/5"],
+  ["EGAL","مصر للألومنيوم","معادن","Musaffa — المجموعة الحالية","غير منشور"]
+];
+const EGX=[
+["ISPH","ابن سينا فارما","رعاية صحية","EGX 33 Shariah","0.01%"],["AMOC","الإسكندرية للزيوت المعدنية","طاقة","EGX 33 Shariah","غير منشورة"],["ICFC","الدولية للأسمدة والكيماويات","كيماويات","EGX 33 Shariah","غير منشورة"],["IFAP","الدولية للمحاصيل الزراعية","زراعة","EGX 33 Shariah","غير منشورة"],["OCDI","سوديك","عقارات","EGX 33 Shariah","غير منشورة"],["RMDA","راميدا","رعاية صحية","EGX 33 Shariah","غير منشورة"],["ACGC","العربية لحليج الأقطان","منسوجات","EGX 33 Shariah","1.37%"],["ARCC","العربية للأسمنت","مواد بناء","EGX 33 Shariah","2.02%"],["ETRS","إيجيترانس","نقل","EGX 33 Shariah","1.20%"],["ETEL","المصرية للاتصالات","اتصالات","EGX 33 Shariah","0.20%"],["MPCO","المنصورة للدواجن","أغذية","EGX 33 Shariah","0.62%"],["ORWE","النساجون الشرقيون","منسوجات","EGX 33 Shariah","1.87%"],["MTIE","إم إم جروب","تجارة","EGX 33 Shariah","0.60%"],["ORAS","أوراسكوم للإنشاءات","مقاولات","EGX 33 Shariah","0.87%"],["ORHD","أوراسكوم للتنمية مصر","عقارات","EGX 33 Shariah","غير منشورة"],["EFIH","إي فاينانس","تكنولوجيا مالية","EGX 33 Shariah","غير منشورة"],["EFID","إيديتا","أغذية","EGX 33 Shariah","غير منشورة"],["PHDC","بالم هيلز","عقارات","EGX 33 Shariah","غير منشورة"],["SAUD","البركة مصر","بنوك إسلامية","EGX 33 Shariah","غير منشورة"],["FAIT","فيصل الإسلامي - جنيه","بنوك إسلامية","EGX 33 Shariah","غير منشورة"],["FAITA","فيصل الإسلامي - دولار","بنوك إسلامية","EGX 33 Shariah","غير منشورة"],["JUFO","جهينة","أغذية","EGX 33 Shariah","غير منشورة"],["GOUR","جورميه","أغذية","EGX 33 Shariah","غير منشورة"],["RACC","راية لخدمات مراكز الاتصالات","تكنولوجيا","EGX 33 Shariah","2.00%"],["SKPC","سيدي كرير للبتروكيماويات","بتروكيماويات","EGX 33 Shariah","3.40%"],["CLHO","كليوباترا للرعاية الصحية","رعاية صحية","EGX 33 Shariah","غير منشورة"],["EGAS","غاز مصر","طاقة","EGX 33 Shariah","0.06%"],["LCSW","ليسيكو مصر","مواد بناء","EGX 33 Shariah","غير منشورة"],["TMGH","طلعت مصطفى","عقارات","EGX 33 Shariah","غير منشورة"],["MASR","مدينة مصر","عقارات","EGX 33 Shariah","غير منشورة"],["ATQA","مصر الوطنية للصلب - عتاقة","معادن","EGX 33 Shariah","3.54%"],["MCQE","مصر للأسمنت - قنا","مواد بناء","EGX 33 Shariah","3.22%"],["EGAL","مصر للألومنيوم","معادن","EGX 33 Shariah","0.73%"],["ADIB","مصرف أبوظبي الإسلامي - مصر","بنوك إسلامية","EGX 33 Shariah","غير منشورة"]
+];
+const BOU=[
+['AALR','الشركة العامة لاستصلاح الأراضي والتنمية والتعمير'],['ACGC','العربية لحليج الأقطان'],['ACRO','أكرو مصر للشدات والسقالات المعدنية'],['ADIB','مصرف أبوظبي الإسلامي - مصر'],['AIFI','أطلس للاستثمار والصناعات الغذائية'],['AITG','أسيوط الإسلامية الوطنية للتجارة والتنمية'],['AIVCB','العربية للاستثمارات والاستشارات'],['ALUM','العربية للألومنيوم'],['AMER','عامر جروب'],['AMES','الإسكندرية للخدمات الطبية'],['AMIA','عربية مولتياكا للاستثمارات'],['AMOC','الإسكندرية للزيوت المعدنية'],['APPC','الإسكندرية لتعبئة وتغليف الأدوية'],['APSW','العربية وبولفارا للغزل والنسيج'],['ARCC','العربية للأسمنت'],['ARVA','العربية للصمامات'],['ASHC','السلام القابضة - شهادات إيداع'],['ATLC','إيه تي ليس'],['ATQA','مصر الوطنية للصلب - عتاقة'],['AXPH','الإسكندرية للأدوية والصناعات الكيماوية'],['BIOC','جلاكسو سميث كلاين'],['BTFH','بلتون القابضة'],['CAED','القاهرة للتعليم'],['CLHO','مستشفى كليوباترا'],['COSG','القاهرة للزيوت والصابون'],['CPCI','القاهرة للأدوية والصناعات الكيماوية'],['DAPH','التنمية والاستشارات الهندسية'],['DCRC','الدلتا للإنشاء والتعمير'],['DPKP','دي بي كي للأدوية'],['EALR','العربية لاستصلاح الأراضي'],['EFIC','المصرية للمالية والصناعية'],['EFID','إيديتا للصناعات الغذائية'],['EGAL','مصر للألومنيوم'],['EGAS','غاز مصر'],['ELKA','القاهرة للإسكان والتعمير'],['ELNA','النصر لتصنيع الحاصلات الزراعية'],['EMRI','إيميرالد للاستثمار العقاري'],['ETRS','المصرية لخدمات النقل والتجارة'],['FAIT','فيصل الإسلامي - جنيه'],['FAITA','فيصل الإسلامي - دولار'],['GGCC','الجيزة العامة للمقاولات والاستثمار العقاري'],['GIHD','الإسلامية الغربية للمساكن'],['GMCI','جي إم سي للاستثمارات الصناعية والتجارية والمالية'],['GSSC','العامة للصوامع والتخزين'],['GTHE','جلوبال تليكوم القابضة'],['IDHC','التشخيص المتكامل القابضة'],['IFAP','الدولية للمحاصيل الزراعية'],['INFI','الإسماعيلية الوطنية للصناعات الغذائية'],['IRON','الحديد والصلب المصرية'],['ISMA','الإسماعيلية مصر للدواجن'],['ISMQ','الحديد والصلب للمناجم والمحاجر'],['JUFO','جهينة'],['KABO','النصر للملابس والمنسوجات'],['MAAL','مرسيليا المصرية الخليجية للاستثمار العقاري'],['MBEG','إم بي للهندسة والمقاولات'],['MASR','مدينة مصر'],['MBSC','مصر بني سويف للأسمنت'],['MCQE','مصر للأسمنت - قنا'],['MCRO','ماكرو جروب للأدوية'],['MEPA','التغليف الطبي'],['MFPC','مصر لإنتاج الأسمدة - موبكو'],['MICH','مصر لصناعة الكيماويات'],['MILS','مطاحن شمال القاهرة'],['MOED','أنظمة التعليم الحديثة'],['MPCO','المنصورة للدواجن'],['MTIE','إم إم جروب'],['NCEM','أسمنت الوطنية'],['NCGC','النيل لحليج الأقطان'],['NDRL','الحفر الوطنية'],['NEDA','شمال الصعيد للتنمية والإنتاج الزراعي'],['NIPH','النيل للأدوية والصناعات الكيماوية'],['NOAF','شمال أفريقيا للاستثمار العقاري'],['ORAS','أوراسكوم للإنشاءات'],['PACH','الدهانات والصناعات الكيماوية'],['PHDC','بالم هيلز'],['PRDC','بايونيرز بروبرتيز للتنمية العمرانية'],['RACC','راية لخدمات مراكز الاتصالات'],['RMDA','راميدا'],['RREI','العربية للاستثمار العقاري'],['RUBX','روبكس لتصنيع البلاستيك'],['SAUD','البركة مصر'],['SCEM','أسمنت سيناء'],['SIPC','سبأ الدولية للأدوية والصناعات الكيماوية'],['SMCS','سامكريت مصر - مهندسون ومقاولون'],['SMFR','سماد مصر - إيجيفرت'],['SPIN','الإسكندرية للغزل والنسيج'],['SPMD','سبيد ميديكال'],['SUCE','أسمنت السويس'],['SUGR','الدلتا للسكر'],['SVCE','جنوب الوادي للأسمنت'],['SWDY','السويدي إليكتريك'],['TALM','تعليم لخدمات الإدارة'],['TRSI','العاشر من رمضان للغزل والنسيج'],['VODE','فودافون مصر للاتصالات'],['WATP','مودرن ووتر بروفينج'],['ZEOT','الزيوت المستخلصة ومشتقاتها']
+];
+const PUR={"ACGC":"1.37%","ARCC":"2.02%","ETRS":"1.20%","ETEL":"0.20%","MPCO":"0.62%","ORWE":"1.87%","MTIE":"0.60%","ORAS":"0.87%","RACC":"2.00%","SKPC":"3.40%","EGAS":"0.06%","ATQA":"3.54%","MCQE":"3.22%","EGAL":"0.73%","ISPH":"0.01%"};
+let mode='musaffa';
+function rows(){
+ if(mode==='musaffa') return MUSaffa;
+ if(mode==='egx') return EGX;
+ return BOU.map(x=>[x[0],x[1],'—','Boubyan Capital — Q1 2026',PUR[x[0]]||'غير منشورة']);
+}
+function render(){
+ const q=(document.getElementById('sharia-search-final')?.value||'').trim().toLowerCase();
+ const f=document.getElementById('sharia-purity-filter-final')?.value||'all';
+ let data=rows().filter(x=>!q||x[0].toLowerCase().includes(q)||x[1].toLowerCase().includes(q));
+ if(f==='known') data=data.filter(x=>x[4]&&x[4]!=='غير منشورة');
+ if(f==='unknown') data=data.filter(x=>!x[4]||x[4]==='غير منشورة');
+ const vals=data.map(x=>parseFloat(String(x[4]).replace('%',''))).filter(Number.isFinite);
+ document.getElementById('sharia-count').textContent=data.length.toLocaleString('ar-EG');
+ document.getElementById('sharia-purity-count').textContent=vals.length.toLocaleString('ar-EG');
+ document.getElementById('sharia-purity-avg').textContent=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2)+'%':'—';
+ const body=document.getElementById('sharia-body-final');
+ body.innerHTML=data.map((x,i)=>{
+   const rating = mode==='musaffa' ? (x[4]||'—') : '—';
+   const purity = mode==='musaffa' ? 'غير منشورة' : (x[4]||'غير منشورة');
+   const source = x[3];
+   return `<tr class="hover:bg-slate-50">
+     <td class="p-3 text-slate-400">${i+1}</td>
+     <td class="p-3 font-black" dir="ltr" style="text-align:right">${x[0]}</td>
+     <td class="p-3 font-bold">${x[1]}</td>
+     <td class="p-3 text-slate-500">${x[2]}</td>
+     <td class="p-3"><span class="inline-flex px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">${source}</span></td>
+     <td class="p-3 font-black text-blue-700">${rating}</td>
+     <td class="p-3 font-black ${purity==='غير منشورة'?'text-amber-600':'text-emerald-600'}">${purity}</td>
+   </tr>`;
+ }).join('');
+}
+window.setShariaMode=function(m){
+ mode=m;
+ ['musaffa','egx','boubyan'].forEach(k=>{const el=document.getElementById('sharia-tab-'+k); if(el) el.className='sharia-tab text-right rounded-2xl border-2 p-4 '+(m===k?'border-emerald-500 bg-emerald-50':'border-transparent bg-white shadow-sm');});
+ const notes={
+ musaffa:'المصدر: Musaffa نفسها. المجموعة المصرية الحالية تعرض 68 سهمًا، بينما البيانات المفتوحة بالكامل غير متاحة للعامة. هذه التبويب تعرض 21 سهمًا يمكن توثيقها علنًا من Musaffa (20 من Musaffa Academy + EGAL من المجموعة الحالية).',
+ egx:'المصدر: البورصة المصرية — EGX 33 Shariah. الأسماء بالعربية والرموز بالإنجليزية. نسب التطهير المعروضة منفصلة عن تصنيف المؤشر.',
+ boubyan:'المصدر: Boubyan Capital — قائمة الشركات الإسلامية المتاح تداولها في البورصة المصرية للربع الأول 2026. الأسماء معروضة بالعربية والرموز بالإنجليزية.'};
+ document.getElementById('sharia-note').textContent=notes[m];
+ render();
+};
+document.addEventListener('DOMContentLoaded',()=>{document.getElementById('sharia-search-final')?.addEventListener('input',render);document.getElementById('sharia-purity-filter-final')?.addEventListener('change',render);document.getElementById('sharia-egx-count').textContent=EGX.length+' سهم';document.getElementById('sharia-boubyan-count').textContent=BOU.length+' سهم';setShariaMode('musaffa');});
+})();
+</script>
 </body>
 </html>
