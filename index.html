@@ -65,6 +65,16 @@
 .dark .sharia-tab-btn{background:#1e293b;border-color:#334155;color:#cbd5e1}
 .dark .sharia-tab-btn.active{background:#16a34a;color:#fff}
 </style>
+
+<style id="portfolio-analytics-css">
+.pa-card{padding:14px;border:1px solid #e2e8f0;border-radius:16px;background:linear-gradient(135deg,#ffffff,#f8fafc)}
+.pa-card span{display:block;color:#64748b;font-size:11px;font-weight:800}
+.pa-card b{display:block;margin-top:6px;color:#0f172a;font-size:21px;font-weight:900}
+.pa-row{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px}
+.pa-open-card{border:1px solid #e2e8f0;border-radius:14px;padding:13px;background:#fff}
+[data-theme="dark"] .pa-card,[data-theme="dark"] .pa-open-card{background:#111827;border-color:#334155}
+[data-theme="dark"] .pa-card b{color:#f8fafc}
+</style>
 </head>
 <body class="bg-slate-50 min-h-screen flex flex-col justify-between">
     <!-- Firebase Email/Password Authentication -->
@@ -119,6 +129,7 @@
                     <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn active px-3 py-2 transition-colors text-slate-200">اللوحة الرئيسية</button>
                     <button onclick="switchTab('transactions')" id="tab-transactions" class="tab-btn px-3 py-2 transition-colors text-slate-400 hover:text-white">سجل الصفقات</button>
                     <button onclick="switchTab('wacc')" id="tab-wacc" class="tab-btn px-3 py-2 transition-colors text-slate-400 hover:text-white">حاسبة متوسط التكلفة</button>
+                    <button onclick="switchTab('analytics')" id="tab-analytics" class="tab-btn px-3 py-2 transition-colors text-slate-400 hover:text-white">تحليل المحفظة</button>
                     <button onclick="switchTab('sharia')" id="tab-sharia" class="tab-btn px-3 py-2 transition-colors text-slate-400 hover:text-white">الأسهم المتوافقة مع الشريعة</button>
                     <button onclick="switchTab('guide')" id="tab-guide" class="tab-btn px-3 py-2 transition-colors text-slate-400 hover:text-white">دليل Excel</button>
                 </nav>
@@ -385,7 +396,47 @@
           </div>
         </section>
         <!-- SECTION 4: EXCEL GUIDE & ARCHITECTURE -->
-        <section id="view-guide" class="space-y-6 hidden">
+        
+    <section id="view-analytics" class="hidden space-y-5">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 class="text-2xl font-black text-slate-900">تحليل المحفظة</h2>
+                    <p class="text-sm text-slate-500 mt-1">ملخص إضافي لأداء الصفقات والمراكز، مع الحفاظ على بياناتك الحالية كما هي.</p>
+                </div>
+                <button onclick="exportPortfolioAnalytics()" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800">تصدير CSV</button>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mt-5">
+                <div class="pa-card"><span>إجمالي الصفقات</span><b id="pa-total">0</b></div>
+                <div class="pa-card"><span>الصفقات المغلقة</span><b id="pa-closed">0</b></div>
+                <div class="pa-card"><span>Win Rate</span><b id="pa-winrate">—</b></div>
+                <div class="pa-card"><span>إجمالي P/L</span><b id="pa-pnl">0 ج.م</b></div>
+                <div class="pa-card"><span>Profit Factor</span><b id="pa-pf">—</b></div>
+                <div class="pa-card"><span>متوسط الصفقة</span><b id="pa-avg">0 ج.م</b></div>
+            </div>
+
+            <div class="grid lg:grid-cols-2 gap-5 mt-5">
+                <div class="border border-slate-200 rounded-2xl p-4">
+                    <h3 class="font-black text-slate-900 mb-3">إحصائيات إضافية</h3>
+                    <div id="pa-stats" class="space-y-2"></div>
+                </div>
+                <div class="border border-slate-200 rounded-2xl p-4">
+                    <h3 class="font-black text-slate-900 mb-3">أفضل وأسوأ صفقة</h3>
+                    <div id="pa-bestworst" class="space-y-3"></div>
+                </div>
+            </div>
+
+            <div class="border border-slate-200 rounded-2xl p-4 mt-5">
+                <div class="flex items-center justify-between gap-3">
+                    <h3 class="font-black text-slate-900">تركيز المراكز المفتوحة</h3>
+                    <span id="pa-concentration" class="text-xs font-bold text-slate-500">—</span>
+                </div>
+                <div id="pa-open" class="grid md:grid-cols-2 xl:grid-cols-3 gap-3 mt-3"></div>
+            </div>
+        </div>
+    </section>
+<section id="view-guide" class="space-y-6 hidden">
             <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
                 <h2 class="text-2xl font-black text-slate-900">الدليل الشامل لبناء لوحة التحكم في Excel</h2>
                 <p class="text-slate-600 text-sm leading-relaxed">
@@ -641,7 +692,7 @@
 
         // Immediately attach window functions so HTML inline onclick events work without delay
         window.switchTab = function switchTab(tabName) {
-            const tabs = ['dashboard', 'transactions', 'wacc', 'sharia', 'guide'];
+            const tabs = ['dashboard', 'transactions', 'wacc', 'analytics', 'sharia', 'guide'];
             tabs.forEach(t => {
                 const view = document.getElementById(`view-${t}`);
                 const btn = document.getElementById(`tab-${t}`);
@@ -2216,6 +2267,78 @@ window.setShariaMode=function(m){
  render();
 };
 document.addEventListener('DOMContentLoaded',()=>{document.getElementById('sharia-search-final')?.addEventListener('input',render);document.getElementById('sharia-purity-filter-final')?.addEventListener('change',render);document.getElementById('sharia-egx-count').textContent=EGX.length+' سهم';document.getElementById('sharia-boubyan-count').textContent=BOU.length+' سهم';setShariaMode('musaffa');});
+})();
+</script>
+
+<script id="portfolio-analytics-js">
+(function(){
+  function n(v){const x=Number(v);return Number.isFinite(x)?x:0}
+  function money(v){return n(v).toLocaleString('ar-EG',{minimumFractionDigits:2,maximumFractionDigits:2})+' ج.م'}
+  function run(){
+    if(!Array.isArray(window.transactions)) return;
+    const tx=window.transactions;
+    const closed=tx.filter(t=>n(t.sellPrice)>0 || String(t.status||'')==='مغلقة');
+    let pnl=0,wins=0,losses=0,grossWin=0,grossLoss=0,best=null,worst=null;
+    closed.forEach(t=>{
+      const q=n(t.shares), buy=n(t.buyPrice), sell=n(t.sellPrice), fee=n(t.fee);
+      if(q<=0||buy<=0||sell<=0)return;
+      const p=q*(sell-buy)-fee;
+      pnl+=p;
+      if(p>0){wins++;grossWin+=p}else if(p<0){losses++;grossLoss+=Math.abs(p)}
+      if(!best||p>best.p)best={p,t}; if(!worst||p<worst.p)worst={p,t};
+    });
+    const totalWL=wins+losses, wr=totalWL?wins/totalWL*100:0;
+    const pf=grossLoss?grossWin/grossLoss:0, avg=closed.length?pnl/closed.length:0;
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v};
+    set('pa-total',tx.length.toLocaleString('ar-EG'));
+    set('pa-closed',closed.length.toLocaleString('ar-EG'));
+    set('pa-winrate',totalWL?wr.toFixed(1)+'%':'—');
+    set('pa-pnl',money(pnl));
+    set('pa-pf',grossLoss?pf.toFixed(2):'—');
+    set('pa-avg',money(avg));
+
+    const stats=[
+      ['الرابحة',wins],['الخاسرة',losses],
+      ['إجمالي الأرباح',money(grossWin)],['إجمالي الخسائر',money(-grossLoss)],
+      ['متوسط الربح',money(wins?grossWin/wins:0)],
+      ['متوسط الخسارة',money(losses?-grossLoss/losses:0)]
+    ];
+    document.getElementById('pa-stats').innerHTML=stats.map(x=>`<div class="pa-row"><span>${x[0]}</span><b>${x[1]}</b></div>`).join('');
+
+    const ticker=t=>t?.ticker||'—';
+    document.getElementById('pa-bestworst').innerHTML=
+      `<div class="pa-row"><span>أفضل صفقة — ${ticker(best?.t)}</span><b class="text-emerald-600">${money(best?.p||0)}</b></div>`+
+      `<div class="pa-row"><span>أسوأ صفقة — ${ticker(worst?.t)}</span><b class="text-rose-600">${money(worst?.p||0)}</b></div>`;
+
+    const map=new Map();
+    tx.forEach(t=>{
+      const s=String(t.ticker||'').trim().toUpperCase(),q=n(t.shares),b=n(t.buyPrice),x=n(t.sellPrice);
+      if(!s||q<=0||b<=0||x>0)return;
+      const a=map.get(s)||{q:0,cost:0};a.q+=q;a.cost+=q*b;map.set(s,a);
+    });
+    const arr=[...map.entries()].sort((a,b)=>b[1].cost-a[1].cost);
+    const totalCost=arr.reduce((s,[,a])=>s+a.cost,0);
+    const top=arr[0];
+    set('pa-concentration',top&&totalCost?`أكبر مركز: ${top[0]} — ${(top[1].cost/totalCost*100).toFixed(1)}%`:'لا توجد مراكز مفتوحة');
+    document.getElementById('pa-open').innerHTML=arr.length?arr.map(([s,a])=>{
+      const share=totalCost?a.cost/totalCost*100:0;
+      return `<div class="pa-open-card"><div class="flex justify-between"><b dir="ltr">${s}</b><span class="text-xs font-bold text-slate-500">${share.toFixed(1)}%</span></div><div class="text-xs text-slate-500 mt-2">الكمية: ${a.q.toLocaleString('ar-EG')}</div><div class="text-sm font-black mt-1">${money(a.cost)}</div></div>`;
+    }).join(''):'<div class="text-sm text-slate-400">لا توجد مراكز مفتوحة.</div>';
+  }
+  window.refreshPortfolioAnalytics=run;
+  window.exportPortfolioAnalytics=function(){
+    if(!Array.isArray(window.transactions))return;
+    const rows=[['Ticker','Shares','Buy Price','Sell Price','Fee','P/L']];
+    window.transactions.forEach(t=>rows.push([t.ticker,t.shares,t.buyPrice,t.sellPrice||'',t.fee||'',t.sellPrice?((n(t.shares)*n(t.sellPrice))-(n(t.shares)*n(t.buyPrice))-n(t.fee)):'' ]));
+    const csv='\uFEFF'+rows.map(r=>r.map(v=>`"${String(v??'').replaceAll('"','""')}"`).join(',')).join('\n');
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='StockPulse_Portfolio_Analysis.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  };
+  const original=window.switchTab;
+  window.switchTab=function(tab){
+    if(typeof original==='function') original(tab);
+    if(tab==='analytics') setTimeout(run,50);
+  };
+  window.addEventListener('load',()=>setTimeout(run,500));
 })();
 </script>
 </body>
