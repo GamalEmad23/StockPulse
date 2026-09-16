@@ -57,6 +57,71 @@
             color: #16a34a;
             font-weight: 700;
         }
+
+        /* ===== Theme / Dark Mode ===== */
+        body.dark-mode {
+            background-color: #070d1a !important;
+            color: #e5e7eb !important;
+        }
+        body.dark-mode .bg-white { background-color: #111827 !important; }
+        body.dark-mode .bg-slate-50 { background-color: #0f172a !important; }
+        body.dark-mode .bg-slate-100 { background-color: #1e293b !important; }
+        body.dark-mode .bg-slate-200 { background-color: #334155 !important; }
+        body.dark-mode .bg-slate-800 { background-color: #0f172a !important; }
+        body.dark-mode .bg-slate-900 { background-color: #070d1a !important; }
+        body.dark-mode .text-slate-900,
+        body.dark-mode .text-slate-800,
+        body.dark-mode .text-slate-700 { color: #f1f5f9 !important; }
+        body.dark-mode .text-slate-600,
+        body.dark-mode .text-slate-500,
+        body.dark-mode .text-slate-400 { color: #94a3b8 !important; }
+        body.dark-mode .text-slate-300,
+        body.dark-mode .text-slate-200 { color: #cbd5e1 !important; }
+        body.dark-mode .border-slate-100,
+        body.dark-mode .border-slate-200,
+        body.dark-mode .border-slate-300,
+        body.dark-mode .border-slate-700,
+        body.dark-mode .border-slate-800 { border-color: #334155 !important; }
+        body.dark-mode input,
+        body.dark-mode select,
+        body.dark-mode textarea {
+            background-color: #0f172a !important;
+            color: #f8fafc !important;
+            border-color: #475569 !important;
+        }
+        body.dark-mode input::placeholder,
+        body.dark-mode textarea::placeholder { color: #64748b !important; }
+        body.dark-mode option { background-color: #0f172a; color: #f8fafc; }
+        body.dark-mode .shadow-sm,
+        body.dark-mode .shadow-md,
+        body.dark-mode .shadow-lg,
+        body.dark-mode .shadow-xl,
+        body.dark-mode .shadow-2xl { box-shadow: 0 8px 28px rgba(0,0,0,.28) !important; }
+        body.dark-mode .bg-emerald-50 { background-color: #052e1b !important; }
+        body.dark-mode .bg-blue-50 { background-color: #0b2545 !important; }
+        body.dark-mode .bg-rose-50 { background-color: #450a0a !important; }
+        body.dark-mode .bg-purple-50 { background-color: #2e1065 !important; }
+        body.dark-mode .text-emerald-700 { color: #6ee7b7 !important; }
+        body.dark-mode .text-blue-700 { color: #93c5fd !important; }
+        body.dark-mode .text-rose-700 { color: #fda4af !important; }
+        body.dark-mode .text-purple-700 { color: #d8b4fe !important; }
+        body.dark-mode .border-emerald-200 { border-color: #166534 !important; }
+        body.dark-mode .border-blue-200 { border-color: #1d4ed8 !important; }
+        body.dark-mode .border-rose-200 { border-color: #9f1239 !important; }
+        body.dark-mode .border-purple-200 { border-color: #6b21a8 !important; }
+        body.dark-mode table { color: #e2e8f0; }
+        body.dark-mode thead th { background-color: #1e293b !important; color: #e2e8f0 !important; }
+        body.dark-mode tbody tr { border-color: #334155 !important; }
+        body.dark-mode tbody tr:hover { background-color: #172033 !important; }
+        body.dark-mode .tab-btn:not(.active) { color: #94a3b8 !important; }
+        body.dark-mode .tab-btn:not(.active):hover { color: #fff !important; }
+        body.dark-mode #auth-modal > div { background-color: #111827 !important; }
+        body.dark-mode #theme-toggle {
+            background-color: #1e293b !important;
+            border-color: #475569 !important;
+            color: #f8fafc !important;
+        }
+        #theme-toggle { min-width: 42px; }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen flex flex-col justify-between">
@@ -97,7 +162,11 @@
                 </div>
 
                 <!-- User Profile & Account ID Badge -->
-                <div class="flex items-center gap-2 bg-slate-800/90 text-slate-300 text-xs px-3 py-1.5 rounded-xl border border-slate-700">
+                <div class="flex items-center gap-2 flex-wrap justify-end">
+                    <button id="theme-toggle" type="button" onclick="toggleDarkMode()" title="تبديل الوضع الداكن" aria-label="تبديل الوضع الداكن" class="h-10 w-10 rounded-xl border border-slate-700 bg-slate-800 text-white flex items-center justify-center text-lg hover:bg-slate-700 transition-all shadow-sm">
+                        <span id="theme-toggle-icon">☾</span>
+                    </button>
+                    <div class="flex items-center gap-2 bg-slate-800/90 text-slate-300 text-xs px-3 py-1.5 rounded-xl border border-slate-700">
                     <span class="text-slate-400 font-medium">معرّف الحساب:</span>
                     <span id="user-id-display" class="font-mono text-emerald-400 font-bold select-all dir-ltr max-w-[140px] sm:max-w-none truncate">جاري التحميل...</span>
                     <button onclick="copyUserId()" title="نسخ رمز الحساب" class="hover:text-emerald-300 bg-slate-700 hover:bg-slate-600 p-1.5 rounded transition-colors mr-1 flex items-center gap-1 text-[11px]">
@@ -106,6 +175,7 @@
                     <button onclick="openUserModal()" title="إدارة الحساب" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2.5 py-1.5 rounded-md transition-colors mr-1">
                         🔑 فتح حساب
                     </button>
+                    </div>
                 </div>
 
                 <nav class="flex gap-1 sm:gap-4 text-sm font-medium w-full md:w-auto justify-end border-t border-slate-800 md:border-t-0 pt-2 md:pt-0">
@@ -1120,6 +1190,10 @@
         }
 
         function recalculateMetricsAndCharts() {
+            if (typeof Chart !== 'undefined') {
+                Chart.defaults.color = document.body.classList.contains('dark-mode') ? '#cbd5e1' : '#475569';
+                Chart.defaults.borderColor = document.body.classList.contains('dark-mode') ? '#334155' : '#e2e8f0';
+            }
             let totalMarketValue = 0;
             let totalRealizedPL = 0;
             let totalUnrealizedPL = 0;
@@ -1979,6 +2053,28 @@
             if (document.getElementById('res-total-cost')) document.getElementById('res-total-cost').innerText = totalCost.toLocaleString('ar-EG', { style: 'currency', currency: 'EGP' });
             if (document.getElementById('res-avg-price')) document.getElementById('res-avg-price').innerText = `${avgPrice.toFixed(2)} ج.م`;
         };
+
+        // ===== Dark Mode =====
+        function applyDarkMode(enabled) {
+            document.body.classList.toggle('dark-mode', enabled);
+            const icon = document.getElementById('theme-toggle-icon');
+            const btn = document.getElementById('theme-toggle');
+            if (icon) icon.textContent = enabled ? '☀' : '☾';
+            if (btn) btn.title = enabled ? 'التبديل إلى الوضع الفاتح' : 'التبديل إلى الوضع الداكن';
+            localStorage.setItem('stockpulse_dark_mode', enabled ? '1' : '0');
+            if (typeof recalculateMetricsAndCharts === 'function') {
+                setTimeout(() => recalculateMetricsAndCharts(), 0);
+            }
+        }
+
+        window.toggleDarkMode = function toggleDarkMode() {
+            applyDarkMode(!document.body.classList.contains('dark-mode'));
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const saved = localStorage.getItem('stockpulse_dark_mode');
+            applyDarkMode(saved === '1');
+        });
 
         // Network Status Listeners for seamless Offline -> Online Syncing
         window.addEventListener('online', () => {
