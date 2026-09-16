@@ -825,7 +825,7 @@ body { min-width: 0 !important; overflow-x: hidden; }
 
                 <div class="grid grid-cols-2 gap-3" id="tx-sell-date-wrap">
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">تاريخ الإغلاق / البيع</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">تاريخ الإغلاق / البيع <span class="font-normal text-slate-400">(اختياري للصفقة المفتوحة)</span></label>
                         <input type="date" id="tx-sell-date" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
                         <p class="text-[10px] text-slate-400 mt-1">يُستخدم لحساب مدة الاحتفاظ بالصفقة.</p>
                     </div>
@@ -2222,9 +2222,10 @@ body { min-width: 0 !important; overflow-x: hidden; }
             const wrap = document.getElementById('tx-sell-date-wrap');
             const input = document.getElementById('tx-sell-date');
             if (!wrap || !input) return;
-            const closed = status === 'مغلقة';
-            wrap.classList.toggle('hidden', !closed);
-            input.required = closed;
+            // Keep the field visible in both Add and Edit modes.
+            // It is required only when the transaction is marked as closed.
+            wrap.classList.remove('hidden');
+            input.required = status === 'مغلقة';
         }
         document.getElementById('tx-status')?.addEventListener('change', updateSellDateField);
         let tickerPriceDebounce = null;
