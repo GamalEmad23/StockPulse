@@ -75,6 +75,53 @@
 [data-theme="dark"] .pa-card,[data-theme="dark"] .pa-open-card{background:#111827;border-color:#334155}
 [data-theme="dark"] .pa-card b{color:#f8fafc}
 </style>
+
+<script id="theme-bootstrap">
+(function(){
+  try {
+    const saved = localStorage.getItem('stockpulse_theme');
+    if (saved === 'dark') document.documentElement.setAttribute('data-theme','dark');
+  } catch(e) {}
+})();
+</script>
+<style id="stockpulse-dark-mode">
+html[data-theme="dark"], html[data-theme="dark"] body { background:#0b1120 !important; color:#e5e7eb !important; }
+html[data-theme="dark"] .bg-white { background:#111827 !important; }
+html[data-theme="dark"] .bg-slate-50 { background:#0b1120 !important; }
+html[data-theme="dark"] .bg-slate-100 { background:#1e293b !important; }
+html[data-theme="dark"] .bg-slate-200 { background:#334155 !important; }
+html[data-theme="dark"] .bg-slate-800 { background:#172033 !important; }
+html[data-theme="dark"] .bg-slate-900 { background:#080d1a !important; }
+html[data-theme="dark"] .text-slate-900 { color:#f8fafc !important; }
+html[data-theme="dark"] .text-slate-800 { color:#f1f5f9 !important; }
+html[data-theme="dark"] .text-slate-700 { color:#e2e8f0 !important; }
+html[data-theme="dark"] .text-slate-600 { color:#cbd5e1 !important; }
+html[data-theme="dark"] .text-slate-500 { color:#94a3b8 !important; }
+html[data-theme="dark"] .text-slate-400 { color:#94a3b8 !important; }
+html[data-theme="dark"] .border-slate-200 { border-color:#334155 !important; }
+html[data-theme="dark"] .border-slate-300 { border-color:#475569 !important; }
+html[data-theme="dark"] .border-slate-700 { border-color:#334155 !important; }
+html[data-theme="dark"] input, html[data-theme="dark"] select, html[data-theme="dark"] textarea { background:#0f172a !important; color:#f8fafc !important; border-color:#475569 !important; }
+html[data-theme="dark"] input::placeholder, html[data-theme="dark"] textarea::placeholder { color:#64748b !important; }
+html[data-theme="dark"] .shadow-sm { box-shadow:0 1px 3px rgba(0,0,0,.35) !important; }
+html[data-theme="dark"] .pa-row { background:#0f172a !important; border-color:#334155 !important; color:#e2e8f0 !important; }
+html[data-theme="dark"] .pa-open-card { background:#111827 !important; border-color:#334155 !important; }
+html[data-theme="dark"] .pa-card { background:linear-gradient(135deg,#111827,#0f172a) !important; border-color:#334155 !important; }
+html[data-theme="dark"] .pa-card span { color:#94a3b8 !important; }
+html[data-theme="dark"] .pa-card b { color:#f8fafc !important; }
+html[data-theme="dark"] table { background:#111827 !important; color:#e2e8f0 !important; }
+html[data-theme="dark"] thead, html[data-theme="dark"] th { background:#1e293b !important; color:#f8fafc !important; }
+html[data-theme="dark"] td { border-color:#334155 !important; }
+html[data-theme="dark"] .bg-emerald-50 { background:#052e1b !important; }
+html[data-theme="dark"] .text-emerald-700 { color:#6ee7b7 !important; }
+html[data-theme="dark"] .bg-blue-50 { background:#0c2340 !important; }
+html[data-theme="dark"] .text-blue-700 { color:#93c5fd !important; }
+html[data-theme="dark"] .bg-rose-50 { background:#3b0a12 !important; }
+html[data-theme="dark"] .text-rose-700 { color:#fda4af !important; }
+.theme-toggle { display:inline-flex; align-items:center; gap:7px; border:1px solid #334155; background:#172033; color:#e2e8f0; padding:7px 11px; border-radius:10px; font-size:12px; font-weight:800; cursor:pointer; transition:.2s; }
+.theme-toggle:hover { background:#243047; transform:translateY(-1px); }
+html[data-theme="dark"] .theme-toggle { background:#0f172a; border-color:#475569; color:#f8fafc; }
+</style>
 </head>
 <body class="bg-slate-50 min-h-screen flex flex-col justify-between">
     <!-- Firebase Email/Password Authentication -->
@@ -111,6 +158,7 @@
                         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                         <span>جاري المزامنة...</span>
                     </span>
+                    <button id="theme-toggle" type="button" class="theme-toggle" onclick="toggleStockPulseTheme()" title="تغيير مظهر الموقع">🌙 <span>الوضع الداكن</span></button>
                 </div>
 
                 <!-- User Profile & Account ID Badge -->
@@ -659,7 +707,8 @@
     <!-- Footer -->
     <footer class="bg-slate-900 text-slate-400 py-4 border-t border-slate-800 text-xs text-center">
         <div class="max-w-7xl mx-auto px-4">
-            لوحة تحكم متابعة محفظة الأسهم التفاعلية &copy; 2026 - مصممة خصيصاً لتحليل وإدارة الاستثمارات المالية.
+            لوحة تحكم متابعة محفظة الأسهم التفاعلية &copy; 2026 - مصممة خصيصاً لتحليل وإدارة الاستثمارات المالية.<br>
+            <span class="text-slate-500">تطوير وتصميم: جمال عماد</span>
         </div>
     </footer>
 
@@ -2473,6 +2522,31 @@ document.addEventListener('DOMContentLoaded', function(){
     if(typeof window.refreshPortfolioAnalytics === 'function') window.refreshPortfolioAnalytics();
   }, 50);
 });
+</script>
+
+<script id="stockpulse-theme-script">
+(function(){
+  function applyTheme(theme){
+    const isDark = theme === 'dark';
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    try { localStorage.setItem('stockpulse_theme', isDark ? 'dark' : 'light'); } catch(e) {}
+    const btn = document.getElementById('theme-toggle');
+    if(btn){
+      btn.innerHTML = isDark ? '☀️ <span>الوضع الفاتح</span>' : '🌙 <span>الوضع الداكن</span>';
+      btn.title = isDark ? 'العودة للوضع الفاتح' : 'تفعيل الوضع الداكن';
+    }
+    setTimeout(function(){ if(typeof window.refreshPortfolioAnalytics==='function') window.refreshPortfolioAnalytics(); }, 0);
+  }
+  window.toggleStockPulseTheme = function(){
+    const current = document.documentElement.getAttribute('data-theme') || 'light';
+    applyTheme(current === 'dark' ? 'light' : 'dark');
+  };
+  document.addEventListener('DOMContentLoaded', function(){
+    let theme='light';
+    try { theme=localStorage.getItem('stockpulse_theme') || 'light'; } catch(e) {}
+    applyTheme(theme);
+  });
+})();
 </script>
 </body>
 </html>
