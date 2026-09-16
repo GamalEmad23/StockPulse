@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة تحكم متابعة محفظة الأسهم التفاعلية</title>
     <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com">initTheme();
-    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Google Fonts -->
@@ -58,32 +57,6 @@
             color: #16a34a;
             font-weight: 700;
         }
-        .analytics-header { margin-top: 10px; }
-        .metric-label { font-size: 11px; font-weight: 800; color: #94a3b8; margin-bottom: 6px; }
-        .metric-value { font-size: 22px; line-height: 1.2; font-weight: 900; color: #0f172a; }
-        .metric-sub { font-size: 10px; color: #64748b; margin-top: 5px; }
-        .analytics-card { transition: transform .18s ease, box-shadow .18s ease; }
-        .analytics-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(15,23,42,.08); }
-        .risk-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-        .risk-grid > div { padding:12px; border:1px solid #e2e8f0; border-radius:14px; background:#f8fafc; }
-        .risk-grid span { display:block; font-size:11px; color:#64748b; margin-bottom:5px; }
-        .risk-grid strong { font-size:15px; color:#0f172a; }
-        [data-theme="dark"] body { background:#07111f !important; color:#e2e8f0; }
-        [data-theme="dark"] .bg-white { background:#0f1b2d !important; border-color:#24344d !important; }
-        [data-theme="dark"] .bg-slate-50, [data-theme="dark"] .bg-slate-100 { background:#142238 !important; }
-        [data-theme="dark"] .text-slate-900, [data-theme="dark"] .text-slate-800, [data-theme="dark"] .text-slate-700 { color:#e2e8f0 !important; }
-        [data-theme="dark"] .text-slate-600, [data-theme="dark"] .text-slate-500 { color:#a9b8cc !important; }
-        [data-theme="dark"] .text-slate-400 { color:#8292a8 !important; }
-        [data-theme="dark"] input, [data-theme="dark"] select { background:#0b1627 !important; color:#e2e8f0 !important; border-color:#31445f !important; }
-        [data-theme="dark"] .border-slate-200, [data-theme="dark"] .border-slate-300 { border-color:#24344d !important; }
-        [data-theme="dark"] .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color:#24344d !important; }
-        [data-theme="dark"] .hover\:bg-slate-50:hover { background:#142238 !important; }
-        [data-theme="dark"] .metric-value, [data-theme="dark"] .risk-grid strong { color:#f8fafc !important; }
-        [data-theme="dark"] .risk-grid > div { background:#0b1627; border-color:#24344d; }
-        [data-theme="dark"] .risk-grid span, [data-theme="dark"] .metric-sub { color:#8fa0b7; }
-        [data-theme="dark"] #risk-note { background:#142238 !important; color:#a9b8cc !important; }
-        [data-theme="dark"] .theme-toggle { background:#f8fafc !important; color:#0f172a !important; border-color:#e2e8f0 !important; }
-        @media (max-width: 640px) { .metric-value { font-size:18px; } .risk-grid { grid-template-columns:1fr; } }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen flex flex-col justify-between">
@@ -135,12 +108,11 @@
                     </button>
                 </div>
 
-                <button id="theme-toggle" onclick="toggleTheme()" title="تغيير الوضع" class="theme-toggle px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-sm transition-colors">☾ الوضع الداكن</button>
-
                 <nav class="flex gap-1 sm:gap-4 text-sm font-medium w-full md:w-auto justify-end border-t border-slate-800 md:border-t-0 pt-2 md:pt-0">
                     <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn active px-3 py-2 transition-colors text-slate-200">اللوحة الرئيسية</button>
                     <button onclick="switchTab('transactions')" id="tab-transactions" class="tab-btn px-3 py-2 transition-colors text-slate-400 hover:text-white">سجل الصفقات</button>
                     <button onclick="switchTab('wacc')" id="tab-wacc" class="tab-btn px-3 py-2 transition-colors text-slate-400 hover:text-white">حاسبة متوسط التكلفة</button>
+                    <button onclick="switchTab('sharia')" id="tab-sharia" class="tab-btn px-3 py-2 transition-colors text-slate-400 hover:text-white">الأسهم المتوافقة مع الشريعة</button>
                     <button onclick="switchTab('guide')" id="tab-guide" class="tab-btn px-3 py-2 transition-colors text-slate-400 hover:text-white">دليل Excel</button>
                 </nav>
             </div>
@@ -250,54 +222,6 @@
                     <canvas id="growthChart"></canvas>
                 </div>
             </div>
-
-            <!-- PROFESSIONAL TRADING ANALYTICS -->
-            <div class="analytics-header flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                <div>
-                    <h3 class="text-xl font-black text-slate-900">تحليل التداول واتخاذ القرار</h3>
-                    <p class="text-sm text-slate-500 mt-1">مؤشرات تساعدك على فهم جودة صفقاتك، المخاطر، والنتائج بدون الحاجة لحسابها يدوياً.</p>
-                </div>
-                <span class="text-xs font-bold px-3 py-2 rounded-xl bg-slate-100 text-slate-600">Trading Analytics</span>
-            </div>
-
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="analytics-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm"><div class="metric-label">إجمالي الصفقات</div><div id="metric-total-trades" class="metric-value">0</div><div class="metric-sub">كل عمليات الشراء والبيع</div></div>
-                <div class="analytics-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm"><div class="metric-label">الصفقات المفتوحة</div><div id="metric-open-trades" class="metric-value text-blue-600">0</div><div class="metric-sub">مراكز تحتاج متابعة</div></div>
-                <div class="analytics-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm"><div class="metric-label">Win Rate</div><div id="metric-win-rate" class="metric-value text-emerald-600">0%</div><div class="metric-sub">نسبة الصفقات الرابحة</div></div>
-                <div class="analytics-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm"><div class="metric-label">Profit Factor</div><div id="metric-profit-factor" class="metric-value text-violet-600">0.00</div><div class="metric-sub">إجمالي الأرباح ÷ إجمالي الخسائر</div></div>
-                <div class="analytics-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm"><div class="metric-label">متوسط الربح</div><div id="metric-avg-win" class="metric-value text-emerald-600">0.00 ج.م</div><div class="metric-sub">للصفقات الرابحة</div></div>
-                <div class="analytics-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm"><div class="metric-label">متوسط الخسارة</div><div id="metric-avg-loss" class="metric-value text-rose-600">0.00 ج.م</div><div class="metric-sub">للصفقات الخاسرة</div></div>
-                <div class="analytics-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm"><div class="metric-label">أكبر ربح</div><div id="metric-best-trade" class="metric-value text-emerald-600">0.00 ج.م</div><div id="metric-best-ticker" class="metric-sub">—</div></div>
-                <div class="analytics-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm"><div class="metric-label">أكبر خسارة</div><div id="metric-worst-trade" class="metric-value text-rose-600">0.00 ج.م</div><div id="metric-worst-ticker" class="metric-sub">—</div></div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="analytics-panel bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                    <div class="flex justify-between items-center mb-4"><h3 class="font-black text-slate-800">الصفقات الرابحة والخاسرة</h3><span class="text-xs text-slate-400">Win / Loss</span></div>
-                    <div class="chart-container"><canvas id="winLossChart"></canvas></div>
-                </div>
-                <div class="analytics-panel bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                    <div class="flex justify-between items-center mb-4"><h3 class="font-black text-slate-800">الأداء الشهري</h3><span class="text-xs text-slate-400">Monthly P/L</span></div>
-                    <div class="chart-container"><canvas id="monthlyPLChart"></canvas></div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="analytics-panel bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                    <div class="flex justify-between items-center mb-4"><h3 class="font-black text-slate-800">أكبر مراكز المحفظة</h3><span class="text-xs text-slate-400">Position Concentration</span></div>
-                    <div id="concentration-list" class="space-y-3"><div class="text-sm text-slate-400 text-center py-8">لا توجد مراكز مفتوحة بعد.</div></div>
-                </div>
-                <div class="analytics-panel bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                    <div class="flex justify-between items-center mb-4"><h3 class="font-black text-slate-800">ملخص المخاطر</h3><span class="text-xs text-slate-400">Risk Snapshot</span></div>
-                    <div class="risk-grid">
-                        <div><span>نسبة الكاش</span><strong id="risk-cash-percent">0%</strong></div>
-                        <div><span>أكبر مركز</span><strong id="risk-largest-position">—</strong></div>
-                        <div><span>إجمالي الرسوم</span><strong id="risk-total-fees">0.00 ج.م</strong></div>
-                        <div><span>صافي P/L</span><strong id="risk-net-pl">0.00 ج.م</strong></div>
-                    </div>
-                    <div id="risk-note" class="mt-4 p-3 rounded-xl bg-slate-50 text-xs text-slate-600">سجّل صفقات أكثر للحصول على قراءة أدق للمخاطر.</div>
-                </div>
-            </div>
         </section>
 
         <!-- SECTION 2: TRANSACTIONS MANAGEMENT VIEW -->
@@ -394,6 +318,42 @@
                     </p>
                 </div>
             </div>
+        </section>
+
+        <!-- SECTION 4: SHARIAH STOCKS VIEW -->
+        <section id="view-sharia" class="space-y-6 hidden">
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <div class="flex flex-col lg:flex-row justify-between gap-4 items-start lg:items-center">
+                    <div>
+                        <h2 class="text-xl font-black text-slate-900">الأسهم المتوافقة مع الشريعة</h2>
+                        <p class="text-slate-600 text-sm mt-1">مكونات EGX 33 Shariah، مع نسبة التطهير المنشورة فقط عندما تتوفر بيانات مؤرخة من مصدر متخصص.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2 text-xs">
+                        <a href="https://beta.egx.com.eg/ar/market/indices/overview?index=EGX_SHARIAH" target="_blank" rel="noopener" class="px-3 py-2 rounded-lg bg-slate-900 text-white font-bold">المصدر الرسمي EGX</a>
+                        <a href="https://kasheif.com/articles/16" target="_blank" rel="noopener" class="px-3 py-2 rounded-lg bg-emerald-600 text-white font-bold">مصدر نسب التطهير</a>
+                    </div>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="bg-white rounded-xl border border-slate-200 p-4"><div class="text-xs text-slate-500">عدد المكونات</div><div id="sharia-count" class="text-2xl font-black text-slate-900 mt-1">34</div></div>
+                <div class="bg-white rounded-xl border border-slate-200 p-4"><div class="text-xs text-slate-500">نسب تطهير منشورة</div><div id="sharia-purified-count" class="text-2xl font-black text-emerald-600 mt-1">15</div></div>
+                <div class="bg-white rounded-xl border border-slate-200 p-4"><div class="text-xs text-slate-500">نسبة غير منشورة</div><div id="sharia-missing-count" class="text-2xl font-black text-amber-600 mt-1">19</div></div>
+            </div>
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-4 border-b border-slate-200 flex flex-col md:flex-row gap-3 justify-between">
+                    <input id="sharia-search" oninput="renderShariaStocks()" type="text" placeholder="ابحث باسم السهم أو الرمز..." class="w-full md:w-80 bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 outline-none">
+                    <select id="sharia-purity-filter" onchange="renderShariaStocks()" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2">
+                        <option value="all">كل الأسهم</option><option value="available">لها نسبة تطهير منشورة</option><option value="missing">نسبة التطهير غير منشورة</option>
+                    </select>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-sm">
+                        <thead class="bg-slate-100 text-slate-700 font-bold"><tr><th class="p-3">#</th><th class="p-3">الرمز</th><th class="p-3">الشركة</th><th class="p-3">القطاع</th><th class="p-3">التوافق</th><th class="p-3">نسبة التطهير</th><th class="p-3">تاريخ البيانات</th><th class="p-3">المصدر</th></tr></thead>
+                        <tbody id="sharia-table-body" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-900"><b>تنبيه:</b> نسبة التطهير ليست ثابتة بالضرورة؛ تتغير مع القوائم المالية. لذلك لا يتم وضع 0% أو رقم تقديري للسهم الذي لا توجد له نسبة منشورة.</div>
         </section>
 
         <!-- SECTION 4: EXCEL GUIDE & ARCHITECTURE -->
@@ -644,8 +604,6 @@
         let allocationChartInstance = null;
         let performanceChartInstance = null;
         let growthChartInstance = null;
-        let winLossChartInstance = null;
-        let monthlyPLChartInstance = null;
 
         let depositedCapital = 0;
         let availableCash = 0;
@@ -655,7 +613,7 @@
 
         // Immediately attach window functions so HTML inline onclick events work without delay
         window.switchTab = function switchTab(tabName) {
-            const tabs = ['dashboard', 'transactions', 'wacc', 'guide'];
+            const tabs = ['dashboard', 'transactions', 'wacc', 'sharia', 'guide'];
             tabs.forEach(t => {
                 const view = document.getElementById(`view-${t}`);
                 const btn = document.getElementById(`tab-${t}`);
@@ -674,6 +632,9 @@
 
             if (tabName === 'dashboard') {
                 recalculateMetricsAndCharts();
+            }
+            if (tabName === 'sharia') {
+                renderShariaStocks();
             }
         };
 
@@ -1156,87 +1117,88 @@
 
         function calculateTransactionPL(t) {
             const shares = Number(t.shares) || 0;
-            const fee = Math.max(0, Number(t.fee) || 0);
+            const fee = Number(t.fee) || 0;
             const { buyPrice, sellPrice, currentPrice } = getTxPrices(t);
             const grossBuyCost = shares * buyPrice;
-            const investedCost = grossBuyCost + fee;
 
-            // SELL: the recorded buy price is the cost basis and the sell price is
-            // the actual exit price. The fee belongs to the transaction and is
-            // deducted from the proceeds.
+            // SELL: compare the actual selling price with the original buying price.
+            // Commission is deducted from the proceeds.
             if (t.type === 'بيع') {
-                if (!(buyPrice > 0) || !(sellPrice > 0) || !(shares > 0)) {
-                    return { pl: null, ratio: null, buyCost: investedCost, value: null, marketValue: null, hasCurrentPrice: false };
-                }
                 const sellRevenue = (shares * sellPrice) - fee;
                 const pl = sellRevenue - grossBuyCost;
-                const ratio = investedCost > 0 ? (pl / investedCost) * 100 : null;
-                return { pl, ratio, buyCost: investedCost, value: sellRevenue, marketValue: null, hasCurrentPrice: true };
+                const ratio = grossBuyCost > 0 ? (pl / grossBuyCost) * 100 : null;
+                return { pl, ratio, buyCost: grossBuyCost, value: sellRevenue, marketValue: null, hasCurrentPrice: true };
             }
 
-            // OPEN BUY: value the position ONLY at the fetched market price.
-            // Never fall back to the purchase price, because that would manufacture
-            // a false 0.00% P/L.
+            // OPEN BUY: compare the live market value with the amount invested.
+            // Do not calculate a fake 0% result when the live price is unavailable.
             if (t.status === 'مفتوحة') {
-                if (!(currentPrice > 0) || !(shares > 0) || !(buyPrice > 0)) {
-                    return { pl: null, ratio: null, buyCost: investedCost, value: null, marketValue: null, hasCurrentPrice: false };
+                if (!(currentPrice > 0)) {
+                    return { pl: null, ratio: null, buyCost: grossBuyCost + fee, value: null, marketValue: null, hasCurrentPrice: false };
                 }
                 const currentValue = shares * currentPrice;
-                const pl = currentValue - investedCost;
-                const ratio = investedCost > 0 ? (pl / investedCost) * 100 : null;
-                return { pl, ratio, buyCost: investedCost, value: currentValue, marketValue: currentValue, hasCurrentPrice: true };
+                const pl = currentValue - grossBuyCost - fee;
+                // ROI is net profit/loss relative to the original invested amount.
+                const totalInvested = grossBuyCost + fee;
+                const ratio = totalInvested > 0 ? (pl / totalInvested) * 100 : null;
+                return { pl, ratio, buyCost: totalInvested, value: currentValue, marketValue: currentValue, hasCurrentPrice: true };
             }
 
-            // Backward compatibility for old closed BUY records that contain sellPrice.
-            if (sellPrice > 0 && buyPrice > 0) {
+            // Backward compatibility for old closed-buy records that contain sellPrice.
+            if (sellPrice > 0) {
                 const sellRevenue = (shares * sellPrice) - fee;
                 const pl = sellRevenue - grossBuyCost;
-                const ratio = investedCost > 0 ? (pl / investedCost) * 100 : null;
-                return { pl, ratio, buyCost: investedCost, value: sellRevenue, marketValue: null, hasCurrentPrice: true };
+                const ratio = grossBuyCost > 0 ? (pl / grossBuyCost) * 100 : null;
+                return { pl, ratio, buyCost: grossBuyCost + fee, value: sellRevenue, marketValue: null, hasCurrentPrice: true };
             }
 
-            return { pl: null, ratio: null, buyCost: investedCost, value: null, marketValue: null, hasCurrentPrice: false };
+            return { pl: null, ratio: null, buyCost: grossBuyCost + fee, value: null, marketValue: null, hasCurrentPrice: false };
         }
 
         function recalculateMetricsAndCharts() {
             let totalMarketValue = 0;
             let totalRealizedPL = 0;
             let totalUnrealizedPL = 0;
-            let totalInvestedOpen = 0;
-            let totalRealizedCost = 0;
+            let totalCostBasis = 0;
 
             transactions.forEach(t => {
                 const result = calculateTransactionPL(t);
                 const shares = Number(t.shares) || 0;
-                const fee = Math.max(0, Number(t.fee) || 0);
+                const fee = Number(t.fee) || 0;
                 const buyPrice = Number(t.buyPrice ?? t.price ?? 0);
                 const costBasis = (shares * buyPrice) + fee;
 
+                // For an open BUY, the invested amount is its cost basis and the
+                // current market value is based ONLY on the live market price.
                 if (t.type === 'شراء' && t.status === 'مفتوحة') {
-                    totalInvestedOpen += costBasis;
+                    totalCostBasis += costBasis;
                     if (result.hasCurrentPrice) {
-                        totalMarketValue += result.marketValue || 0;
+                        totalMarketValue += result.value || 0;
                         totalUnrealizedPL += result.pl || 0;
                     }
-                } else if (t.type === 'بيع') {
-                    totalRealizedCost += costBasis;
+                }
+                // For a SELL, result.pl is the realized return versus its recorded
+                // buy price. Include the original cost basis once in the ROI denominator.
+                else if (t.type === 'بيع') {
+                    totalCostBasis += costBasis;
                     totalRealizedPL += result.pl || 0;
-                } else if (t.type === 'شراء' && t.status === 'مغلقة' && Number(t.sellPrice) > 0) {
-                    totalRealizedCost += costBasis;
+                }
+                // Backward-compatible closed BUY records with a recorded sellPrice.
+                else if (t.type === 'شراء' && t.status === 'مغلقة' && Number(t.sellPrice) > 0) {
+                    totalCostBasis += costBasis;
                     totalRealizedPL += result.pl || 0;
                 }
             });
 
-            // The portfolio's current value is always: market value of open positions
-            // + cash. Deposited capital is NOT added a second time.
-            const overallPortfolioValue = totalMarketValue + Math.max(0, Number(availableCash) || 0);
+            const overallPortfolioValue = totalMarketValue + availableCash;
 
-            // ROI = total investment P/L relative to the capital the user actually
-            // deposited. If no deposited capital was entered, fall back to the
-            // amount currently represented by the ledger.
+            // Portfolio ROI must measure investment performance, not the amount of
+            // cash sitting in the account. Therefore use total realized + unrealized
+            // P/L divided by the cost basis of the positions represented by the
+            // transaction ledger. If there are no transaction costs to use, fall back
+            // to deposited capital for compatibility with an older portfolio.
             const totalPL = totalRealizedPL + totalUnrealizedPL;
-            const fallbackInvestedCapital = totalInvestedOpen + totalRealizedCost;
-            const roiDenominator = Number(depositedCapital) > 0 ? Number(depositedCapital) : fallbackInvestedCapital;
+            const roiDenominator = totalCostBasis > 0 ? totalCostBasis : depositedCapital;
             const roi = roiDenominator > 0 ? (totalPL / roiDenominator) * 100 : 0;
 
             const formatCurrency = (val) => val.toLocaleString('ar-EG', { style: 'currency', currency: 'EGP' });
@@ -1259,86 +1221,7 @@
                 el.className = `text-xl font-extrabold ${roi >= 0 ? 'text-emerald-600' : 'text-rose-600'}`;
             }
 
-            renderTradingAnalytics();
             renderCharts();
-        }
-
-        function renderTradingAnalytics() {
-            const txs = filteredTransactions || [];
-            const results = txs.map(t => ({ t, r: calculateTransactionPL(t) })).filter(x => x.r.pl != null && Number.isFinite(x.r.pl));
-            const wins = results.filter(x => x.r.pl > 0);
-            const losses = results.filter(x => x.r.pl < 0);
-            const grossProfit = wins.reduce((s,x)=>s+x.r.pl,0);
-            const grossLossAbs = Math.abs(losses.reduce((s,x)=>s+x.r.pl,0));
-            const winRate = results.length ? (wins.length / results.length) * 100 : 0;
-            const pf = grossLossAbs > 0 ? grossProfit / grossLossAbs : (grossProfit > 0 ? Infinity : 0);
-            const best = results.length ? results.reduce((a,b)=>b.r.pl>a.r.pl?b:a) : null;
-            const worst = results.length ? results.reduce((a,b)=>b.r.pl<a.r.pl?b:a) : null;
-            const avgWin = wins.length ? grossProfit / wins.length : 0;
-            const avgLoss = losses.length ? grossLossAbs / losses.length : 0;
-            const money = v => Number(v||0).toLocaleString('ar-EG',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' ج.م';
-            const set = (id,val)=>{ const e=document.getElementById(id); if(e)e.textContent=val; };
-            set('metric-total-trades', txs.length);
-            set('metric-open-trades', txs.filter(t=>t.status==='مفتوحة').length);
-            set('metric-win-rate', winRate.toFixed(1)+'%');
-            set('metric-profit-factor', Number.isFinite(pf)?pf.toFixed(2):'∞');
-            set('metric-avg-win', money(avgWin));
-            set('metric-avg-loss', money(avgLoss));
-            set('metric-best-trade', best ? money(best.r.pl) : '0.00 ج.م');
-            set('metric-worst-trade', worst ? money(worst.r.pl) : '0.00 ج.م');
-            set('metric-best-ticker', best ? best.t.ticker : '—');
-            set('metric-worst-ticker', worst ? worst.t.ticker : '—');
-
-            const open = txs.filter(t=>t.status==='مفتوحة' && t.type==='شراء');
-            const positions = {};
-            open.forEach(t=>{ const val=(Number(t.shares)||0)*(Number(t.currentPrice)||Number(t.buyPrice)||0); positions[t.ticker]=(positions[t.ticker]||0)+val; });
-            const totalPositionValue = Object.values(positions).reduce((a,b)=>a+b,0);
-            const positionRows = Object.entries(positions).sort((a,b)=>b[1]-a[1]).slice(0,5);
-            const list=document.getElementById('concentration-list');
-            if(list){
-                list.innerHTML = positionRows.length ? positionRows.map(([ticker,val],i)=>{
-                    const pct=totalPositionValue?val/totalPositionValue*100:0;
-                    return `<div><div class="flex justify-between text-xs font-bold mb-1"><span>${i+1}. ${ticker}</span><span>${pct.toFixed(1)}%</span></div><div class="h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full rounded-full bg-emerald-500" style="width:${Math.min(100,pct)}%"></div></div><div class="text-[10px] text-slate-400 mt-1">${money(val)}</div></div>`;
-                }).join('') : '<div class="text-sm text-slate-400 text-center py-8">لا توجد مراكز مفتوحة بعد.</div>';
-            }
-
-            const totalFees=txs.reduce((s,t)=>s+(Number(t.fee)||0),0);
-            const netPL=results.reduce((s,x)=>s+x.r.pl,0);
-            const portfolioValue=totalPositionValue+Math.max(0,Number(availableCash)||0);
-            const cashPct=portfolioValue>0?(Number(availableCash)||0)/portfolioValue*100:0;
-            const largest=positionRows[0];
-            set('risk-cash-percent',cashPct.toFixed(1)+'%');
-            set('risk-largest-position',largest?largest[0]+' — '+(largest[1]/Math.max(1,totalPositionValue)*100).toFixed(1)+'%':'—');
-            set('risk-total-fees',money(totalFees));
-            set('risk-net-pl',money(netPL));
-            const note=document.getElementById('risk-note');
-            if(note){ note.textContent = !txs.length ? 'ابدأ بتسجيل صفقاتك لعرض التحليل.' : cashPct < 10 ? 'السيولة تمثل أقل من 10% من القيمة الحالية حسب البيانات المسجلة.' : 'استخدم توزيع المراكز والـ Win Rate معاً لمراجعة أسلوبك في التداول.'; }
-
-            if(typeof Chart==='undefined') return;
-            const wl=document.getElementById('winLossChart')?.getContext('2d');
-            if(wl){ if(winLossChartInstance)winLossChartInstance.destroy(); winLossChartInstance=new Chart(wl,{type:'doughnut',data:{labels:['رابحة','خاسرة','بدون نتيجة'],datasets:[{data:[wins.length,losses.length,Math.max(0,txs.length-results.length)]}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}}); }
-            const monthly={};
-            results.forEach(x=>{const d=new Date(x.t.date); if(Number.isNaN(d.getTime()))return; const key=d.toISOString().slice(0,7); monthly[key]=(monthly[key]||0)+x.r.pl;});
-            const months=Object.keys(monthly).sort();
-            const mp=document.getElementById('monthlyPLChart')?.getContext('2d');
-            if(mp){ if(monthlyPLChartInstance)monthlyPLChartInstance.destroy(); monthlyPLChartInstance=new Chart(mp,{type:'bar',data:{labels:months.length?months:['لا توجد بيانات'],datasets:[{label:'صافي P/L',data:months.length?months.map(m=>monthly[m]):[0]}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}}); }
-        }
-
-        window.toggleTheme = function toggleTheme(){
-            const root=document.documentElement;
-            const dark=root.getAttribute('data-theme')==='dark';
-            root.setAttribute('data-theme',dark?'light':'dark');
-            localStorage.setItem('stockpulse_theme',dark?'light':'dark');
-            const b=document.getElementById('theme-toggle');
-            if(b)b.textContent=dark?'☾ الوضع الداكن':'☀ الوضع الفاتح';
-            renderCharts(); renderTradingAnalytics();
-        };
-
-        function initTheme(){
-            const theme=localStorage.getItem('stockpulse_theme')||'light';
-            document.documentElement.setAttribute('data-theme',theme);
-            const b=document.getElementById('theme-toggle');
-            if(b)b.textContent=theme==='dark'?'☀ الوضع الفاتح':'☾ الوضع الداكن';
         }
 
         function renderTransactionsTable() {
@@ -1496,7 +1379,7 @@
         // IMPORTANT: this page is hosted on GitHub Pages, so there is no backend
         // request proxy. We therefore use a short timeout, parallel sources, and
         // a tiny local cache so the UI never sits waiting for a dead endpoint.
-        const MARKET_PRICE_CACHE_TTL = 2 * 60 * 1000;
+        const MARKET_PRICE_CACHE_TTL = 30 * 60 * 1000;
         const MARKET_PRICE_TIMEOUT = 1600;
 
         function withTimeout(promise, ms = MARKET_PRICE_TIMEOUT) {
@@ -1739,10 +1622,13 @@
             // Show cached price immediately. The network refresh happens in the
             // background, so opening/editing a transaction never feels blocked.
             const cached = getCachedMarketPrice(cleanTicker);
-            // A cached quote is only a fallback. Never show it as the current
-            // market price while a fresh quote is being requested.
-            if (input) input.value = '';
-            if (status) status.textContent = 'جاري جلب أحدث سعر…';
+            if (cached > 0 && input) {
+                input.value = Number(cached).toFixed(4);
+                if (status) status.textContent = 'السعر المحفوظ ✓ — جاري التحديث…';
+                updateBuyProfitPreview();
+            } else if (status) {
+                status.textContent = 'جاري جلب السعر…';
+            }
 
             // Query multiple GET-based sources, but select the quote using an explicit
             // source priority. This prevents a stale historical provider from
@@ -1752,11 +1638,10 @@
             // while another source already has 0.462). Query the strongest
             // sources together and prefer them in a deterministic order.
             const sourceResults = await Promise.allSettled([
-                // Use EGX quote pages as the authoritative sources. TradingView/EGXpilot
-                // are intentionally NOT used here because they can expose an older close
-                // for EGX symbols (e.g. 23.47 while the latest quote is higher).
-                fetchDecyphaViaJina(cleanTicker).then(price => ({ price, provider: 'Decypha' })),
                 fetchInvestingViaJina(cleanTicker).then(price => ({ price, provider: 'Investing' })),
+                fetchDecyphaViaJina(cleanTicker).then(price => ({ price, provider: 'Decypha' })),
+                fetchTradingViewEgyptDirect(cleanTicker).then(price => ({ price, provider: 'TradingView' })),
+                fetchEGXpilotDirect(cleanTicker).then(price => ({ price, provider: 'EGXpilot' })),
                 fetchMubasherViaJina(cleanTicker).then(price => ({ price, provider: 'Mubasher' })),
                 fetchYahooDirect(cleanTicker).then(price => ({ price, provider: 'Yahoo' }))
             ]);
@@ -1765,10 +1650,10 @@
                 .filter(r => r.status === 'fulfilled' && Number.isFinite(Number(r.value?.price)) && Number(r.value.price) > 0)
                 .map(r => r.value);
 
-            // Decypha/Investing expose the latest EGX quote; Mubasher is the
-            // secondary confirmation source. Never let TradingView/EGXpilot
-            // overwrite a verified EGX quote with an older close.
-            const priority = ['Decypha', 'Investing', 'Mubasher', 'Yahoo'];
+            // Decypha is the primary EGX quote source here because its KRDI page
+            // exposes a clearly labelled latest-update price (for example 0.462 EGP).
+            // Investing/other historical pages can lag or show the prior session.
+            const priority = ['Decypha', 'TradingView', 'EGXpilot', 'Mubasher', 'Investing', 'Yahoo'];
             let result = successful.sort((a, b) => priority.indexOf(a.provider) - priority.indexOf(b.provider))[0] || null;
 
             if (!result) {
@@ -1791,7 +1676,7 @@
 
             setCachedMarketPrice(cleanTicker, price);
             if (input) input.value = price.toFixed(4);
-            if (status) status.textContent = `تم التحديث ✓ (${result.provider})`;
+            if (status) status.textContent = `تم الجلب ✓ (${result.provider})`;
 
             let changed = false;
             transactions.forEach(tx => {
@@ -1930,7 +1815,6 @@
             document.getElementById('tx-fee').value = tx.fee ?? 0;
             document.getElementById('tx-current-price').value = tx.currentPrice || "";
             updateTransactionPriceFields();
-            if (tx.type === 'شراء' && tx.status === 'مفتوحة') fetchCurrentMarketPrice(tx.ticker);
 
             document.getElementById('transaction-modal').classList.remove('hidden');
             document.getElementById('transaction-modal').classList.add('flex');
@@ -2027,13 +1911,13 @@
             } else {
                 tickers.forEach(t => {
                     const sampleTx = transactions.find(tx => tx.ticker === t);
-                    const currPrice = sampleTx ? Number(sampleTx.currentPrice) || 0 : 0;
+                    const currPrice = sampleTx ? sampleTx.currentPrice || sampleTx.price : 0;
                     
                     const div = document.createElement('div');
                     div.className = "flex items-center justify-between gap-3 bg-slate-50 p-2 rounded-lg border border-slate-200";
                     div.innerHTML = `
                         <span class="font-bold text-sm text-slate-800">${t}</span>
-                        <input type="number" step="0.01" data-ticker="${t}" value="${currPrice}" step="0.0001" class="ticker-price-input w-32 bg-white border border-slate-300 rounded p-1 text-sm text-left focus:ring-2 focus:ring-blue-500 outline-none">
+                        <input type="number" step="0.01" data-ticker="${t}" value="${currPrice}" class="ticker-price-input w-32 bg-white border border-slate-300 rounded p-1 text-sm text-left focus:ring-2 focus:ring-blue-500 outline-none">
                     `;
                     container.appendChild(div);
                 });
@@ -2041,8 +1925,6 @@
 
             document.getElementById('prices-modal').classList.remove('hidden');
             document.getElementById('prices-modal').classList.add('flex');
-            // Refresh each ticker in the background; never block opening the modal.
-            tickers.forEach(t => fetchCurrentMarketPrice(t));
         };
 
         window.closePricesModal = function closePricesModal() {
@@ -2138,6 +2020,21 @@
             if (document.getElementById('res-avg-price')) document.getElementById('res-avg-price').innerText = `${avgPrice.toFixed(2)} ج.م`;
         };
 
+        // SHARIAH DATA — EGX 33 constituents + dated published purification figures
+        const shariaStocks = [
+          ['ISPH','ابن سينا فارما','الأدوية والرعاية الصحية',null,null],['AMOC','الإسكندرية للزيوت المعدنية','طاقة / بتروكيماويات',null,null],['ICFC','الدولية للأسمدة والكيماويات','أسمدة وكيماويات',null,null],['IFAP','الدولية للمنتجات الزراعية','زراعة / أسمدة',null,null],['OCDI','سوديك','عقارات',null,null],['RMDA','راميدا','الأدوية والرعاية الصحية',null,null],
+          ['ACGC','العربية لحليج الأقطان','منسوجات',1.37,'2025-09-30'],['ARCC','العربية للأسمنت','مواد بناء',2.02,'2026-06-30'],['ETRS','المصرية لخدمات النقل - إيجيترانس','نقل ولوجستيات',1.20,'2026-06-30'],['ETEL','المصرية للاتصالات','اتصالات وتكنولوجيا',0.20,'2026-03-30'],['MPCO','المنصورة للدواجن','أغذية ومشروبات',0.62,'2026-03-31'],['ORWE','النساجون الشرقيون للسجاد','منسوجات',1.87,'2026-06-30'],['MTIE','إم إم جروب للصناعة والتجارة العالمية','تجارة وتوكيلات',0.60,'2026-06-30'],['ORAS','أوراسكوم كونستراكشون PLC','إنشاءات',0.87,'2026-06-30'],
+          ['ORHD','أوراسكوم للتنمية مصر','عقارات',null,null],['EFIH','إي فاينانس للاستثمارات المالية والرقمية','تكنولوجيا مالية',null,null],['EFID','إيديتا للصناعات الغذائية','أغذية',null,null],['PHDC','بالم هيلز للتعمير','عقارات',null,null],['SAUD','مصرف أبوظبي الإسلامي - مصر','بنوك إسلامية',null,null],['FAITA','بنك فيصل الإسلامي المصري - دولار','بنوك إسلامية',null,null],['FAIT','بنك فيصل الإسلامي المصري - جنيه','بنوك إسلامية',null,null],['JUFO','جهينة للصناعات الغذائية','أغذية',null,null],['GOUR','جورميه إيجيبت','أغذية',null,null],
+          ['RACC','راية لخدمات مراكز الاتصالات','اتصالات وتكنولوجيا',2.00,'2026-06-30'],['SKPC','سيدي كرير للبتروكيماويات','بتروكيماويات',3.40,'2025-12-31'],['CLHO','كليوباترا للمستشفيات','رعاية صحية',null,null],['EGAS','غاز مصر','طاقة / مرافق',0.06,'2026-03-31'],['LCSW','ليسيكو مصر','مواد بناء',null,null],['TMGH','طلعت مصطفى القابضة','عقارات',null,null],['MASR','مدينة مصر للإسكان والتطوير','عقارات',null,null],['ATQA','مصر الوطنية للصلب - عتاقة','معادن',3.54,'2025-12-31'],['MCQE','مصر للأسمنت - قنا','مواد بناء',3.22,'2026-06-30'],['EGAL','مصر للألومنيوم','معادن',0.73,'2025-12-31'],['ADIB','مصرف أبوظبي الإسلامي - مصر','بنوك إسلامية',null,null]
+        ];
+        function renderShariaStocks(){
+          const body=document.getElementById('sharia-table-body'); if(!body)return;
+          const q=(document.getElementById('sharia-search')?.value||'').trim().toLowerCase(); const f=document.getElementById('sharia-purity-filter')?.value||'all';
+          const rows=shariaStocks.filter(x=>{const t=x[0].toLowerCase(),n=x[1].toLowerCase(),sec=x[2].toLowerCase(); const m=!q||t.includes(q)||n.includes(q)||sec.includes(q); const mf=f==='all'||(f==='available'&&x[3]!==null)||(f==='missing'&&x[3]===null); return m&&mf;});
+          body.innerHTML=rows.map((x,i)=>`<tr class="hover:bg-slate-50"><td class="p-3 text-slate-400">${i+1}</td><td class="p-3 font-black">${x[0]}</td><td class="p-3 font-bold">${x[1]}</td><td class="p-3 text-slate-600">${x[2]}</td><td class="p-3"><span class="px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 font-bold">EGX 33</span></td><td class="p-3 font-black ${x[3]===null?'text-amber-600':''}">${x[3]===null?'غير منشورة':x[3].toFixed(2)+'%'}</td><td class="p-3 text-slate-500">${x[4]||'—'}</td><td class="p-3"><a href="https://kasheif.com/articles/16" target="_blank" rel="noopener" class="text-emerald-700 font-bold hover:underline">المصدر</a></td></tr>`).join('')||`<tr><td colspan="8" class="p-8 text-center text-slate-500">لا توجد نتائج</td></tr>`;
+          const a=shariaStocks.filter(x=>x[3]!==null).length; document.getElementById('sharia-count').textContent=shariaStocks.length; document.getElementById('sharia-purified-count').textContent=a; document.getElementById('sharia-missing-count').textContent=shariaStocks.length-a;
+        }
+
         // Network Status Listeners for seamless Offline -> Online Syncing
         window.addEventListener('online', () => {
             showToast("تم استعادة الاتصال بالإنترنت! 🌐 جاري رفع التغييرات...");
@@ -2147,7 +2044,6 @@
                 flushPendingSyncQueue();
             }
         });
-        
 
         window.addEventListener('offline', () => {
             updateSyncBadge(`💾 وضع الأوفلاين (${pendingSyncQueue.length} محفوظ محلياً)`, "amber");
