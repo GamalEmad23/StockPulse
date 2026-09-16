@@ -579,6 +579,8 @@ body { min-width: 0 !important; overflow-x: hidden; }
                                 <th class="p-3">الحالة</th>
                                 <th class="p-3">صافي الربح/الخسارة</th>
                                 <th class="p-3">النسبة %</th>
+                                <th class="p-3">هدف الربح</th>
+                                <th class="p-3">وقف الخسارة</th>
                                 <th class="p-3 text-center">إجراءات</th>
                             </tr>
                         </thead>
@@ -1681,13 +1683,26 @@ body { min-width: 0 !important; overflow-x: hidden; }
             return `${days} يوم`;
         }
 
+        // Read risk fields from both the new format and older/alternate field names.
+        // This keeps previously saved transactions compatible after adding Target/Stop Loss.
+        function getTxRiskValues(tx) {
+            const targetRaw = tx?.targetPrice ?? tx?.target ?? tx?.takeProfit ?? tx?.take_profit ?? null;
+            const stopRaw = tx?.stopPrice ?? tx?.stopLoss ?? tx?.stop_loss ?? null;
+            const target = Number(targetRaw);
+            const stop = Number(stopRaw);
+            return {
+                target: Number.isFinite(target) && target > 0 ? target : null,
+                stop: Number.isFinite(stop) && stop > 0 ? stop : null
+            };
+        }
+
         function renderTransactionsTable() {
             const tbody = document.getElementById('transactions-table-body');
             if (!tbody) return;
             tbody.innerHTML = '';
 
             if (filteredTransactions.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="15" class="text-center p-8 text-slate-400 font-medium">لا توجد صفقات مسجلة حالياً. اضغط على "<span class="text-emerald-600 font-bold">+ إضافة صفقة جديدة</span>" لإضافة أولى صفقاتك!</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="17" class="text-center p-8 text-slate-400 font-medium">لا توجد صفقات مسجلة حالياً. اضغط على "<span class="text-emerald-600 font-bold">+ إضافة صفقة جديدة</span>" لإضافة أولى صفقاتك!</td></tr>`;
                 return;
             }
 
@@ -1715,6 +1730,8 @@ body { min-width: 0 !important; overflow-x: hidden; }
                     <td class="p-3"><span class="px-2 py-0.5 rounded text-xs font-bold ${t.status === 'مفتوحة' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}">${t.status}</span></td>
                     <td class="p-3 font-bold ${result.pl == null ? 'text-slate-400' : (result.pl >= 0 ? 'text-emerald-600' : 'text-rose-600')}">${result.pl == null ? '—' : result.pl.toFixed(2)}</td>
                     <td class="p-3 font-bold text-xs ${result.ratio == null ? 'text-slate-400' : (result.ratio >= 0 ? 'text-emerald-600' : 'text-rose-600')}">${result.ratio == null ? '—' : result.ratio.toFixed(2) + '%'}</td>
+                    <td class="p-3 text-center text-xs font-bold ${getTxRiskValues(t).target ? 'text-emerald-600' : 'text-slate-400'}">${t.type === 'شراء' && getTxRiskValues(t).target ? Number(getTxRiskValues(t).target).toLocaleString('ar-EG', {maximumFractionDigits: 4}) : '—'}</td>
+                    <td class="p-3 text-center text-xs font-bold ${getTxRiskValues(t).stop ? 'text-rose-600' : 'text-slate-400'}">${t.type === 'شراء' && getTxRiskValues(t).stop ? Number(getTxRiskValues(t).stop).toLocaleString('ar-EG', {maximumFractionDigits: 4}) : '—'}</td>
                     <td class="p-3 text-center whitespace-nowrap">
                         <button onclick="openEditModal('${t.id}')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded ml-1 transition-colors">تعديل</button>
                         <button onclick="deleteTx('${t.id}')" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 px-2 py-1 rounded transition-colors">حذف</button>
@@ -2339,8 +2356,9 @@ body { min-width: 0 !important; overflow-x: hidden; }
             document.getElementById('tx-id').value = tx.id;
             document.getElementById('tx-date').value = tx.date;
             document.getElementById('tx-sell-date').value = tx.sellDate || '';
-            document.getElementById('tx-target-price').value = tx.targetPrice ?? '';
-            document.getElementById('tx-stop-price').value = tx.stopPrice ?? '';
+            const risk = getTxRiskValues(tx);
+            document.getElementById('tx-target-price').value = risk.target ?? '';
+            document.getElementById('tx-stop-price').value = risk.stop ?? '';
             document.getElementById('tx-ticker').value = tx.ticker;
             document.getElementById('tx-type').value = tx.type;
             document.getElementById('tx-status').value = tx.status;
