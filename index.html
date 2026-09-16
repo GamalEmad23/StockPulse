@@ -579,8 +579,6 @@ body { min-width: 0 !important; overflow-x: hidden; }
                                 <th class="p-3">الحالة</th>
                                 <th class="p-3">صافي الربح/الخسارة</th>
                                 <th class="p-3">النسبة %</th>
-                                <th class="p-3">هدف الربح</th>
-                                <th class="p-3">وقف الخسارة</th>
                                 <th class="p-3 text-center">إجراءات</th>
                             </tr>
                         </thead>
@@ -863,19 +861,6 @@ body { min-width: 0 !important; overflow-x: hidden; }
                         <span id="tx-price-status" class="text-[11px] text-slate-400 whitespace-nowrap">—</span>
                     </div>
                 </div>
-
-                <!-- Risk management: target and stop loss for BUY positions -->
-                <div id="tx-risk-wrap" class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">هدف الربح (Target)</label>
-                        <input type="number" id="tx-target-price" step="0.0001" min="0.0001" placeholder="اختياري" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">وقف الخسارة (Stop Loss)</label>
-                        <input type="number" id="tx-stop-price" step="0.0001" min="0.0001" placeholder="اختياري" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-                    </div>
-                </div>
-                <p id="tx-risk-preview" class="text-[11px] font-bold min-h-[16px]"></p>
 
                 <p id="tx-pl-preview" class="text-xs font-bold mt-2 min-h-[18px]"></p>
 
@@ -1683,26 +1668,13 @@ body { min-width: 0 !important; overflow-x: hidden; }
             return `${days} يوم`;
         }
 
-        // Read risk fields from both the new format and older/alternate field names.
-        // This keeps previously saved transactions compatible after adding Target/Stop Loss.
-        function getTxRiskValues(tx) {
-            const targetRaw = tx?.targetPrice ?? tx?.target ?? tx?.takeProfit ?? tx?.take_profit ?? null;
-            const stopRaw = tx?.stopPrice ?? tx?.stopLoss ?? tx?.stop_loss ?? null;
-            const target = Number(targetRaw);
-            const stop = Number(stopRaw);
-            return {
-                target: Number.isFinite(target) && target > 0 ? target : null,
-                stop: Number.isFinite(stop) && stop > 0 ? stop : null
-            };
-        }
-
         function renderTransactionsTable() {
             const tbody = document.getElementById('transactions-table-body');
             if (!tbody) return;
             tbody.innerHTML = '';
 
             if (filteredTransactions.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="17" class="text-center p-8 text-slate-400 font-medium">لا توجد صفقات مسجلة حالياً. اضغط على "<span class="text-emerald-600 font-bold">+ إضافة صفقة جديدة</span>" لإضافة أولى صفقاتك!</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="15" class="text-center p-8 text-slate-400 font-medium">لا توجد صفقات مسجلة حالياً. اضغط على "<span class="text-emerald-600 font-bold">+ إضافة صفقة جديدة</span>" لإضافة أولى صفقاتك!</td></tr>`;
                 return;
             }
 
@@ -1730,8 +1702,6 @@ body { min-width: 0 !important; overflow-x: hidden; }
                     <td class="p-3"><span class="px-2 py-0.5 rounded text-xs font-bold ${t.status === 'مفتوحة' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}">${t.status}</span></td>
                     <td class="p-3 font-bold ${result.pl == null ? 'text-slate-400' : (result.pl >= 0 ? 'text-emerald-600' : 'text-rose-600')}">${result.pl == null ? '—' : result.pl.toFixed(2)}</td>
                     <td class="p-3 font-bold text-xs ${result.ratio == null ? 'text-slate-400' : (result.ratio >= 0 ? 'text-emerald-600' : 'text-rose-600')}">${result.ratio == null ? '—' : result.ratio.toFixed(2) + '%'}</td>
-                    <td class="p-3 text-center text-xs font-bold ${getTxRiskValues(t).target ? 'text-emerald-600' : 'text-slate-400'}">${t.type === 'شراء' && getTxRiskValues(t).target ? Number(getTxRiskValues(t).target).toLocaleString('ar-EG', {maximumFractionDigits: 4}) : '—'}</td>
-                    <td class="p-3 text-center text-xs font-bold ${getTxRiskValues(t).stop ? 'text-rose-600' : 'text-slate-400'}">${t.type === 'شراء' && getTxRiskValues(t).stop ? Number(getTxRiskValues(t).stop).toLocaleString('ar-EG', {maximumFractionDigits: 4}) : '—'}</td>
                     <td class="p-3 text-center whitespace-nowrap">
                         <button onclick="openEditModal('${t.id}')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded ml-1 transition-colors">تعديل</button>
                         <button onclick="deleteTx('${t.id}')" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 px-2 py-1 rounded transition-colors">حذف</button>
@@ -2246,56 +2216,9 @@ body { min-width: 0 !important; overflow-x: hidden; }
             updateBuyProfitPreview();
         }
 
-        function updateRiskFields() {
-            const type = document.getElementById('tx-type')?.value || 'شراء';
-            const wrap = document.getElementById('tx-risk-wrap');
-            const target = document.getElementById('tx-target-price');
-            const stop = document.getElementById('tx-stop-price');
-            if (!wrap || !target || !stop) return;
-
-            // Target/Stop Loss are attached to the BUY entry. They are hidden for SELL transactions.
-            const show = type === 'شراء';
-            wrap.classList.toggle('hidden', !show);
-            if (!show) {
-                target.value = '';
-                stop.value = '';
-            }
-            updateRiskPreview();
-        }
-
-        function updateRiskPreview() {
-            const preview = document.getElementById('tx-risk-preview');
-            if (!preview) return;
-            const type = document.getElementById('tx-type')?.value || 'شراء';
-            if (type !== 'شراء') { preview.textContent = ''; return; }
-
-            const buy = parseFloat(document.getElementById('tx-buy-price')?.value);
-            const target = parseFloat(document.getElementById('tx-target-price')?.value);
-            const stop = parseFloat(document.getElementById('tx-stop-price')?.value);
-            if (!Number.isFinite(buy) || buy <= 0) { preview.textContent = ''; return; }
-
-            const messages = [];
-            if (Number.isFinite(target) && target > 0) {
-                const gain = ((target - buy) / buy) * 100;
-                messages.push(`الهدف: ${gain >= 0 ? '+' : ''}${gain.toFixed(2)}%`);
-            }
-            if (Number.isFinite(stop) && stop > 0) {
-                const risk = ((buy - stop) / buy) * 100;
-                messages.push(`المخاطرة: ${risk >= 0 ? '' : '+'}${risk.toFixed(2)}%`);
-            }
-            if (Number.isFinite(target) && Number.isFinite(stop) && target > buy && stop < buy) {
-                const risk = buy - stop;
-                const reward = target - buy;
-                if (risk > 0) messages.push(`Risk / Reward: 1 : ${(reward / risk).toFixed(2)}`);
-            }
-            preview.textContent = messages.join('  •  ');
-            preview.className = 'text-[11px] font-bold min-h-[16px] ' + (messages.length ? 'text-slate-500' : '');
-        }
-
         document.getElementById('tx-type')?.addEventListener('change', () => {
             updateTransactionPriceFields();
             updateSellDateField();
-            updateRiskFields();
         });
         function updateSellDateField() {
             const type = document.getElementById('tx-type')?.value;
@@ -2327,9 +2250,6 @@ body { min-width: 0 !important; overflow-x: hidden; }
         ['tx-buy-price', 'tx-sell-price', 'tx-shares', 'tx-fee'].forEach(id => {
             document.getElementById(id)?.addEventListener('input', updateBuyProfitPreview);
         });
-        ['tx-buy-price', 'tx-target-price', 'tx-stop-price'].forEach(id => {
-            document.getElementById(id)?.addEventListener('input', updateRiskPreview);
-        });
         document.getElementById('tx-current-price')?.addEventListener('input', updateBuyProfitPreview);
 
         window.openAddModal = function openAddModal() {
@@ -2338,11 +2258,8 @@ body { min-width: 0 !important; overflow-x: hidden; }
             document.getElementById('tx-form').reset();
             document.getElementById('tx-date').value = new Date().toISOString().split('T')[0];
             document.getElementById('tx-sell-date').value = '';
-            document.getElementById('tx-target-price').value = '';
-            document.getElementById('tx-stop-price').value = '';
             updateTransactionPriceFields();
             updateSellDateField();
-            updateRiskFields();
             document.getElementById('transaction-modal').classList.remove('hidden');
             document.getElementById('transaction-modal').classList.add('flex');
             document.getElementById('tx-ticker')?.focus();
@@ -2356,9 +2273,6 @@ body { min-width: 0 !important; overflow-x: hidden; }
             document.getElementById('tx-id').value = tx.id;
             document.getElementById('tx-date').value = tx.date;
             document.getElementById('tx-sell-date').value = tx.sellDate || '';
-            const risk = getTxRiskValues(tx);
-            document.getElementById('tx-target-price').value = risk.target ?? '';
-            document.getElementById('tx-stop-price').value = risk.stop ?? '';
             document.getElementById('tx-ticker').value = tx.ticker;
             document.getElementById('tx-type').value = tx.type;
             document.getElementById('tx-status').value = tx.status;
@@ -2369,8 +2283,6 @@ body { min-width: 0 !important; overflow-x: hidden; }
             document.getElementById('tx-current-price').value = tx.currentPrice || "";
             updateTransactionPriceFields();
             updateSellDateField();
-            updateRiskFields();
-            updateRiskPreview();
 
             document.getElementById('transaction-modal').classList.remove('hidden');
             document.getElementById('transaction-modal').classList.add('flex');
@@ -2392,8 +2304,6 @@ body { min-width: 0 !important; overflow-x: hidden; }
                 id: id,
                 date: document.getElementById('tx-date').value,
                 sellDate: document.getElementById('tx-sell-date').value || null,
-                targetPrice: type === 'شراء' ? (parseFloat(document.getElementById('tx-target-price').value) || null) : null,
-                stopPrice: type === 'شراء' ? (parseFloat(document.getElementById('tx-stop-price').value) || null) : null,
                 ticker: document.getElementById('tx-ticker').value.toUpperCase().trim(),
                 type: type,
                 status: document.getElementById('tx-status').value,
@@ -2413,16 +2323,6 @@ body { min-width: 0 !important; overflow-x: hidden; }
             if (type === 'بيع' && (!Number.isFinite(sellPriceValue) || sellPriceValue <= 0)) {
                 showToast('اكتب سعر البيع بشكل صحيح.');
                 return;
-            }
-            if (type === 'شراء') {
-                if (newTx.targetPrice != null && newTx.targetPrice <= buyPrice) {
-                    showToast('هدف الربح يجب أن يكون أعلى من سعر الشراء.');
-                    return;
-                }
-                if (newTx.stopPrice != null && newTx.stopPrice >= buyPrice) {
-                    showToast('وقف الخسارة يجب أن يكون أقل من سعر الشراء.');
-                    return;
-                }
             }
             if (newTx.status === 'مغلقة' && !newTx.sellDate) {
                 showToast('اكتب تاريخ الإغلاق / البيع للصفقة المغلقة.');
