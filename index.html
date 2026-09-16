@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة تحكم متابعة محفظة الأسهم التفاعلية</title>
     <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com">initTheme();
+    </script>
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Google Fonts -->
@@ -57,71 +58,32 @@
             color: #16a34a;
             font-weight: 700;
         }
-
-        /* ===== Theme / Dark Mode ===== */
-        body.dark-mode {
-            background-color: #070d1a !important;
-            color: #e5e7eb !important;
-        }
-        body.dark-mode .bg-white { background-color: #111827 !important; }
-        body.dark-mode .bg-slate-50 { background-color: #0f172a !important; }
-        body.dark-mode .bg-slate-100 { background-color: #1e293b !important; }
-        body.dark-mode .bg-slate-200 { background-color: #334155 !important; }
-        body.dark-mode .bg-slate-800 { background-color: #0f172a !important; }
-        body.dark-mode .bg-slate-900 { background-color: #070d1a !important; }
-        body.dark-mode .text-slate-900,
-        body.dark-mode .text-slate-800,
-        body.dark-mode .text-slate-700 { color: #f1f5f9 !important; }
-        body.dark-mode .text-slate-600,
-        body.dark-mode .text-slate-500,
-        body.dark-mode .text-slate-400 { color: #94a3b8 !important; }
-        body.dark-mode .text-slate-300,
-        body.dark-mode .text-slate-200 { color: #cbd5e1 !important; }
-        body.dark-mode .border-slate-100,
-        body.dark-mode .border-slate-200,
-        body.dark-mode .border-slate-300,
-        body.dark-mode .border-slate-700,
-        body.dark-mode .border-slate-800 { border-color: #334155 !important; }
-        body.dark-mode input,
-        body.dark-mode select,
-        body.dark-mode textarea {
-            background-color: #0f172a !important;
-            color: #f8fafc !important;
-            border-color: #475569 !important;
-        }
-        body.dark-mode input::placeholder,
-        body.dark-mode textarea::placeholder { color: #64748b !important; }
-        body.dark-mode option { background-color: #0f172a; color: #f8fafc; }
-        body.dark-mode .shadow-sm,
-        body.dark-mode .shadow-md,
-        body.dark-mode .shadow-lg,
-        body.dark-mode .shadow-xl,
-        body.dark-mode .shadow-2xl { box-shadow: 0 8px 28px rgba(0,0,0,.28) !important; }
-        body.dark-mode .bg-emerald-50 { background-color: #052e1b !important; }
-        body.dark-mode .bg-blue-50 { background-color: #0b2545 !important; }
-        body.dark-mode .bg-rose-50 { background-color: #450a0a !important; }
-        body.dark-mode .bg-purple-50 { background-color: #2e1065 !important; }
-        body.dark-mode .text-emerald-700 { color: #6ee7b7 !important; }
-        body.dark-mode .text-blue-700 { color: #93c5fd !important; }
-        body.dark-mode .text-rose-700 { color: #fda4af !important; }
-        body.dark-mode .text-purple-700 { color: #d8b4fe !important; }
-        body.dark-mode .border-emerald-200 { border-color: #166534 !important; }
-        body.dark-mode .border-blue-200 { border-color: #1d4ed8 !important; }
-        body.dark-mode .border-rose-200 { border-color: #9f1239 !important; }
-        body.dark-mode .border-purple-200 { border-color: #6b21a8 !important; }
-        body.dark-mode table { color: #e2e8f0; }
-        body.dark-mode thead th { background-color: #1e293b !important; color: #e2e8f0 !important; }
-        body.dark-mode tbody tr { border-color: #334155 !important; }
-        body.dark-mode tbody tr:hover { background-color: #172033 !important; }
-        body.dark-mode .tab-btn:not(.active) { color: #94a3b8 !important; }
-        body.dark-mode .tab-btn:not(.active):hover { color: #fff !important; }
-        body.dark-mode #auth-modal > div { background-color: #111827 !important; }
-        body.dark-mode #theme-toggle {
-            background-color: #1e293b !important;
-            border-color: #475569 !important;
-            color: #f8fafc !important;
-        }
-        #theme-toggle { min-width: 42px; }
+        .analytics-header { margin-top: 10px; }
+        .metric-label { font-size: 11px; font-weight: 800; color: #94a3b8; margin-bottom: 6px; }
+        .metric-value { font-size: 22px; line-height: 1.2; font-weight: 900; color: #0f172a; }
+        .metric-sub { font-size: 10px; color: #64748b; margin-top: 5px; }
+        .analytics-card { transition: transform .18s ease, box-shadow .18s ease; }
+        .analytics-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(15,23,42,.08); }
+        .risk-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        .risk-grid > div { padding:12px; border:1px solid #e2e8f0; border-radius:14px; background:#f8fafc; }
+        .risk-grid span { display:block; font-size:11px; color:#64748b; margin-bottom:5px; }
+        .risk-grid strong { font-size:15px; color:#0f172a; }
+        [data-theme="dark"] body { background:#07111f !important; color:#e2e8f0; }
+        [data-theme="dark"] .bg-white { background:#0f1b2d !important; border-color:#24344d !important; }
+        [data-theme="dark"] .bg-slate-50, [data-theme="dark"] .bg-slate-100 { background:#142238 !important; }
+        [data-theme="dark"] .text-slate-900, [data-theme="dark"] .text-slate-800, [data-theme="dark"] .text-slate-700 { color:#e2e8f0 !important; }
+        [data-theme="dark"] .text-slate-600, [data-theme="dark"] .text-slate-500 { color:#a9b8cc !important; }
+        [data-theme="dark"] .text-slate-400 { color:#8292a8 !important; }
+        [data-theme="dark"] input, [data-theme="dark"] select { background:#0b1627 !important; color:#e2e8f0 !important; border-color:#31445f !important; }
+        [data-theme="dark"] .border-slate-200, [data-theme="dark"] .border-slate-300 { border-color:#24344d !important; }
+        [data-theme="dark"] .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color:#24344d !important; }
+        [data-theme="dark"] .hover\:bg-slate-50:hover { background:#142238 !important; }
+        [data-theme="dark"] .metric-value, [data-theme="dark"] .risk-grid strong { color:#f8fafc !important; }
+        [data-theme="dark"] .risk-grid > div { background:#0b1627; border-color:#24344d; }
+        [data-theme="dark"] .risk-grid span, [data-theme="dark"] .metric-sub { color:#8fa0b7; }
+        [data-theme="dark"] #risk-note { background:#142238 !important; color:#a9b8cc !important; }
+        [data-theme="dark"] .theme-toggle { background:#f8fafc !important; color:#0f172a !important; border-color:#e2e8f0 !important; }
+        @media (max-width: 640px) { .metric-value { font-size:18px; } .risk-grid { grid-template-columns:1fr; } }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen flex flex-col justify-between">
@@ -162,11 +124,7 @@
                 </div>
 
                 <!-- User Profile & Account ID Badge -->
-                <div class="flex items-center gap-2 flex-wrap justify-end">
-                    <button id="theme-toggle" type="button" onclick="toggleDarkMode()" title="تبديل الوضع الداكن" aria-label="تبديل الوضع الداكن" class="h-10 w-10 rounded-xl border border-slate-700 bg-slate-800 text-white flex items-center justify-center text-lg hover:bg-slate-700 transition-all shadow-sm">
-                        <span id="theme-toggle-icon">☾</span>
-                    </button>
-                    <div class="flex items-center gap-2 bg-slate-800/90 text-slate-300 text-xs px-3 py-1.5 rounded-xl border border-slate-700">
+                <div class="flex items-center gap-2 bg-slate-800/90 text-slate-300 text-xs px-3 py-1.5 rounded-xl border border-slate-700">
                     <span class="text-slate-400 font-medium">معرّف الحساب:</span>
                     <span id="user-id-display" class="font-mono text-emerald-400 font-bold select-all dir-ltr max-w-[140px] sm:max-w-none truncate">جاري التحميل...</span>
                     <button onclick="copyUserId()" title="نسخ رمز الحساب" class="hover:text-emerald-300 bg-slate-700 hover:bg-slate-600 p-1.5 rounded transition-colors mr-1 flex items-center gap-1 text-[11px]">
@@ -175,8 +133,9 @@
                     <button onclick="openUserModal()" title="إدارة الحساب" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2.5 py-1.5 rounded-md transition-colors mr-1">
                         🔑 فتح حساب
                     </button>
-                    </div>
                 </div>
+
+                <button id="theme-toggle" onclick="toggleTheme()" title="تغيير الوضع" class="theme-toggle px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-sm transition-colors">☾ الوضع الداكن</button>
 
                 <nav class="flex gap-1 sm:gap-4 text-sm font-medium w-full md:w-auto justify-end border-t border-slate-800 md:border-t-0 pt-2 md:pt-0">
                     <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn active px-3 py-2 transition-colors text-slate-200">اللوحة الرئيسية</button>
@@ -289,6 +248,54 @@
                 </div>
                 <div class="chart-container" style="max-width: 100%;">
                     <canvas id="growthChart"></canvas>
+                </div>
+            </div>
+
+            <!-- PROFESSIONAL TRADING ANALYTICS -->
+            <div class="analytics-header flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div>
+                    <h3 class="text-xl font-black text-slate-900">تحليل التداول واتخاذ القرار</h3>
+                    <p class="text-sm text-slate-500 mt-1">مؤشرات تساعدك على فهم جودة صفقاتك، المخاطر، والنتائج بدون الحاجة لحسابها يدوياً.</p>
+                </div>
+                <span class="text-xs font-bold px-3 py-2 rounded-xl bg-slate-100 text-slate-600">Trading Analytics</span>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="analytics-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm"><div class="metric-label">إجمالي الصفقات</div><div id="metric-total-trades" class="metric-value">0</div><div class="metric-sub">كل عمليات الشراء والبيع</div></div>
+                <div class="analytics-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm"><div class="metric-label">الصفقات المفتوحة</div><div id="metric-open-trades" class="metric-value text-blue-600">0</div><div class="metric-sub">مراكز تحتاج متابعة</div></div>
+                <div class="analytics-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm"><div class="metric-label">Win Rate</div><div id="metric-win-rate" class="metric-value text-emerald-600">0%</div><div class="metric-sub">نسبة الصفقات الرابحة</div></div>
+                <div class="analytics-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm"><div class="metric-label">Profit Factor</div><div id="metric-profit-factor" class="metric-value text-violet-600">0.00</div><div class="metric-sub">إجمالي الأرباح ÷ إجمالي الخسائر</div></div>
+                <div class="analytics-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm"><div class="metric-label">متوسط الربح</div><div id="metric-avg-win" class="metric-value text-emerald-600">0.00 ج.م</div><div class="metric-sub">للصفقات الرابحة</div></div>
+                <div class="analytics-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm"><div class="metric-label">متوسط الخسارة</div><div id="metric-avg-loss" class="metric-value text-rose-600">0.00 ج.م</div><div class="metric-sub">للصفقات الخاسرة</div></div>
+                <div class="analytics-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm"><div class="metric-label">أكبر ربح</div><div id="metric-best-trade" class="metric-value text-emerald-600">0.00 ج.م</div><div id="metric-best-ticker" class="metric-sub">—</div></div>
+                <div class="analytics-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm"><div class="metric-label">أكبر خسارة</div><div id="metric-worst-trade" class="metric-value text-rose-600">0.00 ج.م</div><div id="metric-worst-ticker" class="metric-sub">—</div></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="analytics-panel bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <div class="flex justify-between items-center mb-4"><h3 class="font-black text-slate-800">الصفقات الرابحة والخاسرة</h3><span class="text-xs text-slate-400">Win / Loss</span></div>
+                    <div class="chart-container"><canvas id="winLossChart"></canvas></div>
+                </div>
+                <div class="analytics-panel bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <div class="flex justify-between items-center mb-4"><h3 class="font-black text-slate-800">الأداء الشهري</h3><span class="text-xs text-slate-400">Monthly P/L</span></div>
+                    <div class="chart-container"><canvas id="monthlyPLChart"></canvas></div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="analytics-panel bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <div class="flex justify-between items-center mb-4"><h3 class="font-black text-slate-800">أكبر مراكز المحفظة</h3><span class="text-xs text-slate-400">Position Concentration</span></div>
+                    <div id="concentration-list" class="space-y-3"><div class="text-sm text-slate-400 text-center py-8">لا توجد مراكز مفتوحة بعد.</div></div>
+                </div>
+                <div class="analytics-panel bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <div class="flex justify-between items-center mb-4"><h3 class="font-black text-slate-800">ملخص المخاطر</h3><span class="text-xs text-slate-400">Risk Snapshot</span></div>
+                    <div class="risk-grid">
+                        <div><span>نسبة الكاش</span><strong id="risk-cash-percent">0%</strong></div>
+                        <div><span>أكبر مركز</span><strong id="risk-largest-position">—</strong></div>
+                        <div><span>إجمالي الرسوم</span><strong id="risk-total-fees">0.00 ج.م</strong></div>
+                        <div><span>صافي P/L</span><strong id="risk-net-pl">0.00 ج.م</strong></div>
+                    </div>
+                    <div id="risk-note" class="mt-4 p-3 rounded-xl bg-slate-50 text-xs text-slate-600">سجّل صفقات أكثر للحصول على قراءة أدق للمخاطر.</div>
                 </div>
             </div>
         </section>
@@ -637,6 +644,8 @@
         let allocationChartInstance = null;
         let performanceChartInstance = null;
         let growthChartInstance = null;
+        let winLossChartInstance = null;
+        let monthlyPLChartInstance = null;
 
         let depositedCapital = 0;
         let availableCash = 0;
@@ -1190,10 +1199,6 @@
         }
 
         function recalculateMetricsAndCharts() {
-            if (typeof Chart !== 'undefined') {
-                Chart.defaults.color = document.body.classList.contains('dark-mode') ? '#cbd5e1' : '#475569';
-                Chart.defaults.borderColor = document.body.classList.contains('dark-mode') ? '#334155' : '#e2e8f0';
-            }
             let totalMarketValue = 0;
             let totalRealizedPL = 0;
             let totalUnrealizedPL = 0;
@@ -1254,7 +1259,86 @@
                 el.className = `text-xl font-extrabold ${roi >= 0 ? 'text-emerald-600' : 'text-rose-600'}`;
             }
 
+            renderTradingAnalytics();
             renderCharts();
+        }
+
+        function renderTradingAnalytics() {
+            const txs = filteredTransactions || [];
+            const results = txs.map(t => ({ t, r: calculateTransactionPL(t) })).filter(x => x.r.pl != null && Number.isFinite(x.r.pl));
+            const wins = results.filter(x => x.r.pl > 0);
+            const losses = results.filter(x => x.r.pl < 0);
+            const grossProfit = wins.reduce((s,x)=>s+x.r.pl,0);
+            const grossLossAbs = Math.abs(losses.reduce((s,x)=>s+x.r.pl,0));
+            const winRate = results.length ? (wins.length / results.length) * 100 : 0;
+            const pf = grossLossAbs > 0 ? grossProfit / grossLossAbs : (grossProfit > 0 ? Infinity : 0);
+            const best = results.length ? results.reduce((a,b)=>b.r.pl>a.r.pl?b:a) : null;
+            const worst = results.length ? results.reduce((a,b)=>b.r.pl<a.r.pl?b:a) : null;
+            const avgWin = wins.length ? grossProfit / wins.length : 0;
+            const avgLoss = losses.length ? grossLossAbs / losses.length : 0;
+            const money = v => Number(v||0).toLocaleString('ar-EG',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' ج.م';
+            const set = (id,val)=>{ const e=document.getElementById(id); if(e)e.textContent=val; };
+            set('metric-total-trades', txs.length);
+            set('metric-open-trades', txs.filter(t=>t.status==='مفتوحة').length);
+            set('metric-win-rate', winRate.toFixed(1)+'%');
+            set('metric-profit-factor', Number.isFinite(pf)?pf.toFixed(2):'∞');
+            set('metric-avg-win', money(avgWin));
+            set('metric-avg-loss', money(avgLoss));
+            set('metric-best-trade', best ? money(best.r.pl) : '0.00 ج.م');
+            set('metric-worst-trade', worst ? money(worst.r.pl) : '0.00 ج.م');
+            set('metric-best-ticker', best ? best.t.ticker : '—');
+            set('metric-worst-ticker', worst ? worst.t.ticker : '—');
+
+            const open = txs.filter(t=>t.status==='مفتوحة' && t.type==='شراء');
+            const positions = {};
+            open.forEach(t=>{ const val=(Number(t.shares)||0)*(Number(t.currentPrice)||Number(t.buyPrice)||0); positions[t.ticker]=(positions[t.ticker]||0)+val; });
+            const totalPositionValue = Object.values(positions).reduce((a,b)=>a+b,0);
+            const positionRows = Object.entries(positions).sort((a,b)=>b[1]-a[1]).slice(0,5);
+            const list=document.getElementById('concentration-list');
+            if(list){
+                list.innerHTML = positionRows.length ? positionRows.map(([ticker,val],i)=>{
+                    const pct=totalPositionValue?val/totalPositionValue*100:0;
+                    return `<div><div class="flex justify-between text-xs font-bold mb-1"><span>${i+1}. ${ticker}</span><span>${pct.toFixed(1)}%</span></div><div class="h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full rounded-full bg-emerald-500" style="width:${Math.min(100,pct)}%"></div></div><div class="text-[10px] text-slate-400 mt-1">${money(val)}</div></div>`;
+                }).join('') : '<div class="text-sm text-slate-400 text-center py-8">لا توجد مراكز مفتوحة بعد.</div>';
+            }
+
+            const totalFees=txs.reduce((s,t)=>s+(Number(t.fee)||0),0);
+            const netPL=results.reduce((s,x)=>s+x.r.pl,0);
+            const portfolioValue=totalPositionValue+Math.max(0,Number(availableCash)||0);
+            const cashPct=portfolioValue>0?(Number(availableCash)||0)/portfolioValue*100:0;
+            const largest=positionRows[0];
+            set('risk-cash-percent',cashPct.toFixed(1)+'%');
+            set('risk-largest-position',largest?largest[0]+' — '+(largest[1]/Math.max(1,totalPositionValue)*100).toFixed(1)+'%':'—');
+            set('risk-total-fees',money(totalFees));
+            set('risk-net-pl',money(netPL));
+            const note=document.getElementById('risk-note');
+            if(note){ note.textContent = !txs.length ? 'ابدأ بتسجيل صفقاتك لعرض التحليل.' : cashPct < 10 ? 'السيولة تمثل أقل من 10% من القيمة الحالية حسب البيانات المسجلة.' : 'استخدم توزيع المراكز والـ Win Rate معاً لمراجعة أسلوبك في التداول.'; }
+
+            if(typeof Chart==='undefined') return;
+            const wl=document.getElementById('winLossChart')?.getContext('2d');
+            if(wl){ if(winLossChartInstance)winLossChartInstance.destroy(); winLossChartInstance=new Chart(wl,{type:'doughnut',data:{labels:['رابحة','خاسرة','بدون نتيجة'],datasets:[{data:[wins.length,losses.length,Math.max(0,txs.length-results.length)]}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}}); }
+            const monthly={};
+            results.forEach(x=>{const d=new Date(x.t.date); if(Number.isNaN(d.getTime()))return; const key=d.toISOString().slice(0,7); monthly[key]=(monthly[key]||0)+x.r.pl;});
+            const months=Object.keys(monthly).sort();
+            const mp=document.getElementById('monthlyPLChart')?.getContext('2d');
+            if(mp){ if(monthlyPLChartInstance)monthlyPLChartInstance.destroy(); monthlyPLChartInstance=new Chart(mp,{type:'bar',data:{labels:months.length?months:['لا توجد بيانات'],datasets:[{label:'صافي P/L',data:months.length?months.map(m=>monthly[m]):[0]}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}}); }
+        }
+
+        window.toggleTheme = function toggleTheme(){
+            const root=document.documentElement;
+            const dark=root.getAttribute('data-theme')==='dark';
+            root.setAttribute('data-theme',dark?'light':'dark');
+            localStorage.setItem('stockpulse_theme',dark?'light':'dark');
+            const b=document.getElementById('theme-toggle');
+            if(b)b.textContent=dark?'☾ الوضع الداكن':'☀ الوضع الفاتح';
+            renderCharts(); renderTradingAnalytics();
+        };
+
+        function initTheme(){
+            const theme=localStorage.getItem('stockpulse_theme')||'light';
+            document.documentElement.setAttribute('data-theme',theme);
+            const b=document.getElementById('theme-toggle');
+            if(b)b.textContent=theme==='dark'?'☀ الوضع الفاتح':'☾ الوضع الداكن';
         }
 
         function renderTransactionsTable() {
@@ -2053,28 +2137,6 @@
             if (document.getElementById('res-total-cost')) document.getElementById('res-total-cost').innerText = totalCost.toLocaleString('ar-EG', { style: 'currency', currency: 'EGP' });
             if (document.getElementById('res-avg-price')) document.getElementById('res-avg-price').innerText = `${avgPrice.toFixed(2)} ج.م`;
         };
-
-        // ===== Dark Mode =====
-        function applyDarkMode(enabled) {
-            document.body.classList.toggle('dark-mode', enabled);
-            const icon = document.getElementById('theme-toggle-icon');
-            const btn = document.getElementById('theme-toggle');
-            if (icon) icon.textContent = enabled ? '☀' : '☾';
-            if (btn) btn.title = enabled ? 'التبديل إلى الوضع الفاتح' : 'التبديل إلى الوضع الداكن';
-            localStorage.setItem('stockpulse_dark_mode', enabled ? '1' : '0');
-            if (typeof recalculateMetricsAndCharts === 'function') {
-                setTimeout(() => recalculateMetricsAndCharts(), 0);
-            }
-        }
-
-        window.toggleDarkMode = function toggleDarkMode() {
-            applyDarkMode(!document.body.classList.contains('dark-mode'));
-        };
-
-        window.addEventListener('DOMContentLoaded', () => {
-            const saved = localStorage.getItem('stockpulse_dark_mode');
-            applyDarkMode(saved === '1');
-        });
 
         // Network Status Listeners for seamless Offline -> Online Syncing
         window.addEventListener('online', () => {
