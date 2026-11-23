@@ -454,6 +454,54 @@ html #view-transactions td button[onclick^="deleteTx"],html #view-transactions t
 html[data-theme=dark] #view-transactions td button.bg-rose-50{background:#482c39!important;color:#ffb1bf!important;border-color:#67404c!important}
 
 </style>
+<style id="stockpulse-dark-palette-v2">
+/* Dark palette correction. Theme-scoped colors only; no state or layout changes. */
+html[data-theme="dark"] {
+  color-scheme:dark;
+  --sp-bg:#0e141e;--sp-surface:#192330;--sp-ink:#edf2f7;
+  --sp-muted:#b0bdcb;--sp-line:#354353;--sp-accent:#74dfcd;
+  --sp-soft:#21373d;--sp-side:#111b27;--sp-shadow:0 6px 24px #00000024;
+}
+html[data-theme="dark"],html[data-theme="dark"] body{background:var(--sp-bg)!important;color:var(--sp-ink)!important;background-image:none!important}
+html[data-theme="dark"] header{background:var(--sp-side)!important;border-color:#2b3948!important}
+html[data-theme="dark"] header .text-2xl{color:#87e6d7!important}
+html[data-theme="dark"] header nav .tab-btn{background:transparent!important;color:#bbc8d5!important}
+html[data-theme="dark"] header nav .tab-btn:hover{background:#233342!important;color:#fff!important}
+html[data-theme="dark"] header nav .tab-btn.active{background:#23434b!important;color:#b5f6e9!important;box-shadow:inset -3px 0 #74dfcd}
+html[data-theme="dark"] .theme-toggle,html[data-theme="dark"] header>div>div>div:nth-child(2){background:#1c2a38!important;border-color:#3a4c60!important;color:#d6e1eb!important}
+html[data-theme="dark"] #sync-status{background:#183b37!important;border-color:#315d54!important;color:#b1ead5!important}
+html[data-theme="dark"] #user-id-display{color:#bfd5e4!important}
+html[data-theme="dark"] header .text-slate-400{color:#b0bdcb!important}
+html[data-theme="dark"] .bg-white,html[data-theme="dark"] .pa-card,html[data-theme="dark"] .pa-open-card{background:var(--sp-surface)!important;color:var(--sp-ink)!important;border-color:var(--sp-line)!important}
+html[data-theme="dark"] main .bg-slate-50,html[data-theme="dark"] main .bg-slate-100,html[data-theme="dark"] main .bg-slate-200{background:#202d3c!important}
+html[data-theme="dark"] main input,html[data-theme="dark"] main select,html[data-theme="dark"] main textarea{background:#101b28!important;color:#edf2f7!important;border-color:#506175!important}
+html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::placeholder{color:#a7b7c8!important}
+html[data-theme="dark"] #view-dashboard>div:nth-child(3)>div:first-child{background:linear-gradient(120deg,#204753,#285a63)!important;border:1px solid #42727a!important}
+html[data-theme="dark"] #view-dashboard>div:nth-child(3)>div:first-child>div{color:#d0e8e9!important}
+html[data-theme="dark"] #view-dashboard>div:nth-child(3)>div:first-child #kpi-portfolio-value{color:#f2fbfc!important}
+html[data-theme="dark"] #kpi-cash-value{color:#a9ceff!important}
+html[data-theme="dark"] main .text-emerald-600,html[data-theme="dark"] main .text-emerald-700,html[data-theme="dark"] main .text-emerald-800{color:#83e3ba!important}
+html[data-theme="dark"] main .text-rose-500,html[data-theme="dark"] main .text-rose-600,html[data-theme="dark"] main .text-rose-700{color:#ffacb8!important}
+html[data-theme="dark"] main .text-blue-600,html[data-theme="dark"] main .text-blue-700{color:#adceff!important}
+html[data-theme="dark"] main .text-amber-600,html[data-theme="dark"] main .text-amber-700{color:#f3d38c!important}
+html[data-theme="dark"] main .bg-emerald-50,html[data-theme="dark"] main .bg-emerald-100{background:#203d34!important;border-color:#3e6657!important}
+html[data-theme="dark"] main .bg-blue-50{background:#25374e!important;border-color:#4d6587!important}
+html[data-theme="dark"] main .bg-rose-50{background:#432c38!important;border-color:#714753!important}
+html[data-theme="dark"] main .bg-amber-50{background:#3d3525!important;border-color:#6d5e3a!important}
+html[data-theme="dark"] main button.bg-emerald-600{background:#207668!important;color:#fff!important;border-color:#529c8d!important}
+html[data-theme="dark"] table,html[data-theme="dark"] #view-transactions td{background:var(--sp-surface)!important;color:var(--sp-ink)!important}
+html[data-theme="dark"] thead,html[data-theme="dark"] th{background:#111d2a!important;color:#bac9d9!important}
+html[data-theme="dark"] tr:hover td{background:#233544!important}
+html[data-theme="dark"] #view-transactions td.text-emerald-600{color:#83e3ba!important}
+html[data-theme="dark"] #view-transactions td.text-rose-600{color:#ffacb8!important}
+html[data-theme="dark"] #view-transactions td button{background:#263c48!important;color:#d5ecf2!important;border-color:#496270!important}
+html[data-theme="dark"] #view-transactions td button[onclick^="deleteTx"],html[data-theme="dark"] #view-transactions td button.bg-rose-50{background:#482e3b!important;color:#ffc0c9!important;border-color:#80515e!important}
+html[data-theme="dark"] .sharia-tab-btn{background:#202f40!important;border-color:#455870!important;color:#d1ddeb!important}
+html[data-theme="dark"] .sharia-tab-btn.active{background:#245e56!important;color:#e3fff5!important;border-color:#4a9a88!important}
+html[data-theme="dark"] main .chart-container{background:#141e2a!important;border-color:#354353!important}
+html[data-theme="dark"] main .chart-container canvas{filter:invert(1) hue-rotate(180deg) saturate(.8)}
+@media(max-width:767px){html[data-theme="dark"] header nav .tab-btn{background:#1c2a38!important}html[data-theme="dark"] header nav .tab-btn.active{background:#23434b!important;box-shadow:inset 0 -2px #74dfcd}html[data-theme="dark"] #view-transactions td:nth-child(5){background:#253b45!important}}
+</style>
 </head>
 <body class="bg-slate-50 min-h-screen flex flex-col justify-between">
     <!-- Firebase Email/Password Authentication -->
